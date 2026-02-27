@@ -30,7 +30,7 @@ struct AddTransactionView: View {
                 Color.groupedBackground.ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 14) {
                         // 收支类型
                         Picker("类型", selection: $type) {
                             Text(TransactionType.expense.rawValue).tag(TransactionType.expense)
@@ -50,7 +50,7 @@ struct AddTransactionView: View {
                             }
                         }
 
-                        // 金额输入（HIG：尽量用系统色、减少“刺眼的大红”）
+                        // 金额输入（HIG：金额用 primary，语义用 badge 表达）
                         VStack(spacing: 10) {
                             HStack {
                                 Text("金额")
@@ -85,111 +85,61 @@ struct AddTransactionView: View {
                         .sectionCardStyle()
                         .padding(.horizontal)
 
-                        // 币种选择
-                        VStack(spacing: 8) {
-                            Text("币种")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                            Picker("币种", selection: $currency) {
-                                Text("SGD").tag(Currency.sgd)
-                                Text("RMB").tag(Currency.rmb)
-                                Text("USD").tag(Currency.usd)
-                            }
-                            .pickerStyle(.segmented)
-                        }
-                        .sectionCardStyle()
-                        .padding(.horizontal)
-
-                        // 分类选择
-                        Button(action: {
-                            showCategoryPicker = true
-                        }) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "tag.fill")
-                                    .font(.title3)
-                                    .foregroundColor(.accentBlue)
-
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("分类")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-
-                                    if !categoryL1.isEmpty && !categoryL2.isEmpty {
-                                        // 支出：二级 · 一级；收入：收入分类
-                                        if type == .expense {
-                                            Text("\(categoryL2) · \(categoryL1)")
-                                                .font(.headline)
-                                                .foregroundColor(.primary)
-                                        } else {
-                                            Text(categoryL2)
-                                                .font(.headline)
-                                                .foregroundColor(.primary)
-                                        }
-                                    } else {
-                                        Text("请选择")
-                                            .font(.headline)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-
-                                Spacer()
-
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .sectionCardStyle()
-                        }
-                        .padding(.horizontal)
-
-                        // 时间选择（默认现在，精确到天）
-                        VStack(spacing: 8) {
-                            Text("时间")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                            DatePicker("", selection: $datetime, displayedComponents: .date)
-                                .datePickerStyle(.compact)
-                                .labelsHidden()
-                        }
-                        .sectionCardStyle()
-                        .padding(.horizontal)
-
-                        // 项目选择（默认日常项目）
-                        VStack(spacing: 8) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "folder.fill")
-                                    .font(.title3)
-                                    .foregroundColor(.accentOrange)
-
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("项目")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-
-                                    Text(defaultProjectName)
-                                        .font(.headline)
-                                }
-
-                                Spacer()
-                            }
-
-                            if !projects.isEmpty {
-                                Picker("项目", selection: $selectedProjectId) {
-                                    ForEach(projects) { project in
-                                        Text(project.name).tag(Optional(project.id))
-                                    }
+                        // 细项卡片：币种 / 分类 / 时间 / 项目
+                        VStack(spacing: 0) {
+                            // 币种
+                            FieldRow(icon: "dollarsign.circle.fill", tint: .accentBlue, title: "币种") {
+                                Picker("币种", selection: $currency) {
+                                    Text("SGD").tag(Currency.sgd)
+                                    Text("RMB").tag(Currency.rmb)
+                                    Text("USD").tag(Currency.usd)
                                 }
                                 .pickerStyle(.menu)
                             }
+
+                            Divider().padding(.leading, 44)
+
+                            // 分类
+                            Button {
+                                showCategoryPicker = true
+                            } label: {
+                                FieldRow(icon: "tag.fill", tint: .accentBlue, title: "分类") {
+                                    Text(categoryTitle)
+                                        .foregroundColor(categoryL2.isEmpty ? .secondary : .primary)
+                                }
+                            }
+                            .buttonStyle(.plain)
+
+                            Divider().padding(.leading, 44)
+
+                            // 时间
+                            FieldRow(icon: "calendar", tint: .accentPurple, title: "时间") {
+                                DatePicker("", selection: $datetime, displayedComponents: .date)
+                                    .labelsHidden()
+                                    .datePickerStyle(.compact)
+                            }
+
+                            Divider().padding(.leading, 44)
+
+                            // 项目
+                            FieldRow(icon: "folder.fill", tint: .accentOrange, title: "项目") {
+                                if projects.isEmpty {
+                                    Text(defaultProjectName)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    Picker("项目", selection: $selectedProjectId) {
+                                        ForEach(projects) { project in
+                                            Text(project.name).tag(Optional(project.id))
+                                        }
+                                    }
+                                    .pickerStyle(.menu)
+                                }
+                            }
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
 
-                        // 备注输入（可选）
+                        // 备注
                         VStack(spacing: 8) {
                             Text("备注（可选）")
                                 .font(.caption)
@@ -197,13 +147,13 @@ struct AddTransactionView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
                             TextField("添加备注...", text: $note, axis: .vertical)
-                                .lineLimit(3...5)
+                                .lineLimit(2...4)
                                 .textFieldStyle(.roundedBorder)
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
 
-                        Spacer()
+                        Spacer(minLength: 10)
                     }
                     .padding(.top, 8)
                 }
@@ -270,6 +220,16 @@ struct AddTransactionView: View {
         }
     }
 
+    private var categoryTitle: String {
+        guard !categoryL1.isEmpty, !categoryL2.isEmpty else {
+            return "请选择"
+        }
+        if type == .expense {
+            return "\(categoryL2) · \(categoryL1)"
+        }
+        return categoryL2
+    }
+
     private func saveTransaction() {
         // 验证
         guard !amount.isEmpty,
@@ -320,6 +280,37 @@ struct AddTransactionView: View {
         } catch {
             errorMessage = "保存失败: \(error.localizedDescription)"
         }
+    }
+}
+
+private struct FieldRow<Trailing: View>: View {
+    let icon: String
+    let tint: Color
+    let title: String
+    @ViewBuilder let trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundColor(tint)
+                .frame(width: 24, alignment: .center)
+
+            Text(title)
+                .foregroundColor(.primary)
+
+            Spacer(minLength: 8)
+
+            trailing
+                .foregroundColor(.secondary)
+
+            if title == "分类" {
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(.vertical, 10)
     }
 }
 
