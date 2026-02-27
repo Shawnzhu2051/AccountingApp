@@ -216,6 +216,7 @@ struct AddTransactionView: View {
                     selectedL1: $categoryL1,
                     selectedL2: $categoryL2
                 )
+                .id(type) // 强制按收支类型重建，避免 sheet 缓存导致显示错误分类
             }
             .alert("错误", isPresented: .constant(errorMessage != nil)) {
                 Button("确定") {
