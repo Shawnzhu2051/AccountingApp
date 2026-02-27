@@ -125,6 +125,14 @@ struct TransactionRow: View {
                 Text(transaction.categoryL1)
                     .font(.caption)
                     .foregroundColor(.secondary)
+                
+                // 备注（如果有）
+                if !transaction.note.isEmpty {
+                    Text(transaction.note)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
             }
             
             Spacer()

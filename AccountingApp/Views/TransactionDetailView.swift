@@ -13,6 +13,7 @@ struct TransactionDetailView: View {
     @State private var datetime: Date = Date()
     @State private var categoryL1: String = ""
     @State private var categoryL2: String = ""
+    @State private var note: String = ""
     @State private var showCategoryPicker = false
     @State private var errorMessage: String?
     @State private var showDeleteConfirm = false
@@ -76,6 +77,12 @@ struct TransactionDetailView: View {
                     .foregroundColor(.secondary)
             }
             
+            // 备注
+            Section("备注（可选）") {
+                TextField("添加备注...", text: $note, axis: .vertical)
+                    .lineLimit(3...5)
+            }
+            
             // 删除按钮
             Section {
                 Button(role: .destructive, action: {
@@ -133,6 +140,7 @@ struct TransactionDetailView: View {
         datetime = transaction.datetime
         categoryL1 = transaction.categoryL1
         categoryL2 = transaction.categoryL2
+        note = transaction.note
     }
     
     private func updateTransaction() {
@@ -154,6 +162,7 @@ struct TransactionDetailView: View {
         transaction.datetime = datetime
         transaction.categoryL1 = categoryL1
         transaction.categoryL2 = categoryL2
+        transaction.note = note
         transaction.updatedAt = Date()
         
         do {

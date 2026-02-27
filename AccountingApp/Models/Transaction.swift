@@ -11,6 +11,7 @@ final class Transaction {
     var projectId: UUID
     var categoryL1: String
     var categoryL2: String
+    var note: String // 备注（可选）
     var createdAt: Date
     var updatedAt: Date
     
@@ -22,7 +23,8 @@ final class Transaction {
         datetime: Date = Date(),
         projectId: UUID,
         categoryL1: String,
-        categoryL2: String
+        categoryL2: String,
+        note: String = ""
     ) {
         self.id = id
         self.amountMinor = amountMinor
@@ -32,6 +34,7 @@ final class Transaction {
         self.projectId = projectId
         self.categoryL1 = categoryL1
         self.categoryL2 = categoryL2
+        self.note = note
         self.createdAt = Date()
         self.updatedAt = Date()
     }

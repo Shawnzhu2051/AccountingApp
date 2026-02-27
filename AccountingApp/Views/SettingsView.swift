@@ -278,7 +278,7 @@ struct ExportView: View {
             let projectDict = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.name) })
             
             // 生成CSV内容
-            var csvText = "时间,类型,币种,金额,一级分类,二级分类,项目\n"
+            var csvText = "时间,类型,币种,金额,一级分类,二级分类,项目,备注\n"
             
             for transaction in transactions.sorted(by: { $0.datetime < $1.datetime }) {
                 let dateStr = transaction.datetime.formatted(date: .numeric, time: .shortened)
@@ -288,8 +288,9 @@ struct ExportView: View {
                 let category1 = transaction.categoryL1
                 let category2 = transaction.categoryL2
                 let projectName = projectDict[transaction.projectId] ?? "未知项目"
+                let note = transaction.note.replacingOccurrences(of: ",", with: "，") // 替换逗号避免CSV格式错误
                 
-                csvText += "\(dateStr),\(type),\(currency),\(amount),\(category1),\(category2),\(projectName)\n"
+                csvText += "\(dateStr),\(type),\(currency),\(amount),\(category1),\(category2),\(projectName),\(note)\n"
             }
             
             // 保存到临时文件

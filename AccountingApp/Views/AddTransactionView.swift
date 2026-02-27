@@ -11,6 +11,7 @@ struct AddTransactionView: View {
     @State private var datetime: Date = Date()
     @State private var categoryL1: String = ""
     @State private var categoryL2: String = ""
+    @State private var note: String = ""
     @State private var showCategoryPicker = false
     @State private var errorMessage: String?
     
@@ -137,6 +138,20 @@ struct AddTransactionView: View {
                         .sectionCardStyle()
                         .padding(.horizontal)
                         
+                        // 备注输入（可选）
+                        VStack(spacing: 8) {
+                            Text("备注（可选）")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            TextField("添加备注...", text: $note, axis: .vertical)
+                                .lineLimit(3...5)
+                                .textFieldStyle(.roundedBorder)
+                        }
+                        .sectionCardStyle()
+                        .padding(.horizontal)
+                        
                         Spacer()
                     }
                 }
@@ -200,7 +215,8 @@ struct AddTransactionView: View {
             datetime: datetime,
             projectId: defaultProject.id,
             categoryL1: categoryL1,
-            categoryL2: categoryL2
+            categoryL2: categoryL2,
+            note: note
         )
         
         do {
