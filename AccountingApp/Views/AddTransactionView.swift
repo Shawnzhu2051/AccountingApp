@@ -50,23 +50,36 @@ struct AddTransactionView: View {
                             }
                         }
 
-                        // 金额输入
-                        VStack(spacing: 8) {
-                            Text("金额")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
+                        // 金额输入（HIG：尽量用系统色、减少“刺眼的大红”）
+                        VStack(spacing: 10) {
                             HStack {
+                                Text("金额")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+
+                                Spacer()
+
+                                Text(type == .expense ? "支出" : "收入")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background((type == .expense ? Color.red : Color.green).opacity(0.12))
+                                    .foregroundColor(type == .expense ? .red : .green)
+                                    .clipShape(Capsule())
+                            }
+
+                            HStack(spacing: 10) {
                                 Text(currency.symbol)
-                                    .font(.currencyAmount)
+                                    .font(.system(size: 24, weight: .semibold, design: .rounded))
                                     .foregroundColor(.secondary)
 
                                 TextField("0.00", text: $amount)
                                     .keyboardType(.decimalPad)
-                                    .font(.currencyAmount)
-                                    .foregroundColor(type == .expense ? .accentRed : .accentGreen)
+                                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
                                     .multilineTextAlignment(.leading)
+
+                                Spacer()
                             }
                         }
                         .sectionCardStyle()
@@ -115,9 +128,9 @@ struct AddTransactionView: View {
                                                 .foregroundColor(.primary)
                                         }
                                     } else {
-                                        Text("请选择分类")
+                                        Text("请选择")
                                             .font(.headline)
-                                            .foregroundColor(.red)
+                                            .foregroundColor(.secondary)
                                     }
                                 }
 
