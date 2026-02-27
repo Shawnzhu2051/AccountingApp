@@ -229,6 +229,8 @@ struct ExportView: View {
     @State private var fileURL: URL?
     @State private var errorMessage: String?
 
+    @State private var showImporter = false
+
     private func fileSafeDate(_ date: Date) -> String {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
@@ -255,6 +257,16 @@ struct ExportView: View {
                 }
             }
 
+            Section("导入") {
+                Button("从文件导入（CSV/XLS）") {
+                    showImporter = true
+                }
+
+                Text("把旧手机导出的CSV/XLS文件导入，可把流水迁移到新手机/新安装的App。")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
             Section {
                 Text("XLS为Excel 2003 XML格式，直接用Excel打开即可；CSV也可用Excel/Numbers/WPS打开。")
                     .font(.caption)
@@ -267,7 +279,25 @@ struct ExportView: View {
                 ShareSheet(items: [url])
             }
         }
-        .alert("错误", isPresented: .constant(errorMessage != nil)) {
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [.commaSeparatedText, .data, .xml],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                do {
+                    let count = try TransactionImporter.importFile(url: url, modelContext: modelContext)
+                    errorMessage = "导入成功：\(count) 条"
+                } catch {
+                    errorMessage = error.localizedDescription
+                }
+            case .failure(let error):
+                errorMessage = error.localizedDescription
+            }
+        }
+        .alert("提示", isPresented: .constant(errorMessage != nil)) {
             Button("确定") {
                 errorMessage = nil
             }
