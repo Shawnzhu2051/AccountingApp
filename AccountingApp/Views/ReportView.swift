@@ -9,6 +9,11 @@ struct ReportView: View {
     @State private var endDate = Date()
     @State private var selectedCurrency: Currency? = nil
     @State private var showDatePicker = false
+    @State private var categoryLevel: CategoryLevel = .level1
+    
+    enum CategoryLevel {
+        case level1, level2
+    }
     
     var body: some View {
         NavigationStack {
@@ -92,7 +97,18 @@ struct ReportView: View {
                 }
                 
                 // 分类饼图
-                Section("分类统计") {
+                Section {
+                    // 分类级别选择器
+                    Picker("统计级别", selection: $categoryLevel) {
+                        Text("一级分类").tag(CategoryLevel.level1)
+                        Text("二级分类").tag(CategoryLevel.level2)
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("分类统计")
+                }
+                
+                Section {
                     ForEach(Array(groupByCategory().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
                         if let categories = groupByCategory()[currency] {
                             VStack(alignment: .leading, spacing: 12) {
@@ -242,12 +258,26 @@ struct ReportView: View {
         
         for currency in [Currency.sgd, .rmb, .usd] {
             let currencyTransactions = transactions.filter { $0.currency == currency }
-            let grouped = Dictionary(grouping: currencyTransactions) { $0.categoryL1 }
             
-            let stats = grouped.map { (category, txs) -> (String, Decimal) in
-                let total = txs.reduce(Decimal(0)) { $0 + $1.amount }
-                return (category, total)
-            }.sorted { $0.1 > $1.1 }
+            let stats: [(String, Decimal)]
+            
+            switch categoryLevel {
+            case .level1:
+                // 按一级分类统计
+                let grouped = Dictionary(grouping: currencyTransactions) { $0.categoryL1 }
+                stats = grouped.map { (category, txs) -> (String, Decimal) in
+                    let total = txs.reduce(Decimal(0)) { $0 + $1.amount }
+                    return (category, total)
+                }.sorted { $0.1 > $1.1 }
+                
+            case .level2:
+                // 按二级分类统计
+                let grouped = Dictionary(grouping: currencyTransactions) { $0.categoryL2 }
+                stats = grouped.map { (category, txs) -> (String, Decimal) in
+                    let total = txs.reduce(Decimal(0)) { $0 + $1.amount }
+                    return (category, total)
+                }.sorted { $0.1 > $1.1 }
+            }
             
             if !stats.isEmpty {
                 result[currency] = stats
