@@ -3,7 +3,7 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -12,13 +12,13 @@ struct SettingsView: View {
                         Label("项目列表", systemImage: "folder")
                     }
                 }
-                
+
                 Section("导出") {
                     NavigationLink(destination: ExportView()) {
                         Label("导出Excel", systemImage: "square.and.arrow.up")
                     }
                 }
-                
+
                 Section("关于") {
                     HStack {
                         Text("版本")
@@ -43,7 +43,7 @@ struct ProjectListView: View {
     @State private var editingName = ""
     @State private var deletingProject: Project?
     @State private var migrateToProject: Project?
-    
+
     var body: some View {
         List {
             ForEach(projects) { project in
@@ -57,21 +57,21 @@ struct ProjectListView: View {
                                 .foregroundColor(.blue)
                         }
                     }
-                    
+
                     Spacer()
-                    
+
                     Menu {
                         if !project.isDefault {
                             Button("设为默认") {
                                 setDefault(project)
                             }
                         }
-                        
+
                         Button("重命名") {
                             editingProject = project
                             editingName = project.name
                         }
-                        
+
                         if !project.isDefault {
                             Button("删除", role: .destructive) {
                                 deletingProject = project
@@ -139,7 +139,7 @@ struct ProjectListView: View {
             loadProjects()
         }
     }
-    
+
     private func loadProjects() {
         let repo = ProjectRepository(modelContext: modelContext)
         do {
@@ -148,13 +148,13 @@ struct ProjectListView: View {
             errorMessage = "加载失败: \(error.localizedDescription)"
         }
     }
-    
+
     private func addProject() {
         guard !newProjectName.isEmpty else {
             errorMessage = "项目名称不能为空"
             return
         }
-        
+
         let project = Project(name: newProjectName)
         let repo = ProjectRepository(modelContext: modelContext)
         do {
@@ -165,7 +165,7 @@ struct ProjectListView: View {
             errorMessage = "保存失败: \(error.localizedDescription)"
         }
     }
-    
+
     private func setDefault(_ project: Project) {
         let repo = ProjectRepository(modelContext: modelContext)
         do {
@@ -175,16 +175,16 @@ struct ProjectListView: View {
             errorMessage = "设置失败"
         }
     }
-    
+
     private func renameProject() {
         guard let project = editingProject, !editingName.isEmpty else {
             errorMessage = "项目名称不能为空"
             return
         }
-        
+
         project.name = editingName
         project.updatedAt = Date()
-        
+
         do {
             try modelContext.save()
             editingProject = nil
@@ -194,24 +194,24 @@ struct ProjectListView: View {
             errorMessage = "重命名失败: \(error.localizedDescription)"
         }
     }
-    
+
     private func deleteProject() {
         guard let project = deletingProject,
               let targetProject = migrateToProject else {
             errorMessage = "请选择迁移目标项目"
             return
         }
-        
+
         let projectRepo = ProjectRepository(modelContext: modelContext)
         let transactionRepo = TransactionRepository(modelContext: modelContext)
-        
+
         do {
             // 迁移交易
             try transactionRepo.updateProject(from: project.id, to: targetProject.id)
-            
+
             // 删除项目
             try projectRepo.delete(project)
-            
+
             deletingProject = nil
             migrateToProject = nil
             loadProjects()
@@ -228,22 +228,26 @@ struct ExportView: View {
     @State private var showShareSheet = false
     @State private var fileURL: URL?
     @State private var errorMessage: String?
-    
+
     var body: some View {
         Form {
             Section("时间范围") {
                 DatePicker("开始日期", selection: $startDate, displayedComponents: .date)
                 DatePicker("结束日期", selection: $endDate, displayedComponents: .date)
             }
-            
+
             Section {
-                Button("导出Excel (CSV)") {
+                Button("导出Excel (XLS)") {
+                    exportToXLS()
+                }
+
+                Button("导出CSV (兼容Excel)") {
                     exportToCSV()
                 }
             }
-            
+
             Section {
-                Text("导出的文件为CSV格式,可在Excel、Numbers或WPS中打开")
+                Text("XLS为Excel 2003 XML格式，直接用Excel打开即可；CSV也可用Excel/Numbers/WPS打开。")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -264,22 +268,19 @@ struct ExportView: View {
             }
         }
     }
-    
+
     private func exportToCSV() {
         let repo = TransactionRepository(modelContext: modelContext)
         let projectRepo = ProjectRepository(modelContext: modelContext)
-        
+
         do {
-            // 获取时间范围内的交易
             let transactions = try repo.fetch(from: startDate, to: endDate)
-            
-            // 获取所有项目(用于查找项目名)
+
             let projects = try projectRepo.fetchAll()
             let projectDict = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.name) })
-            
-            // 生成CSV内容
+
             var csvText = "时间,类型,币种,金额,一级分类,二级分类,项目,备注\n"
-            
+
             for transaction in transactions.sorted(by: { $0.datetime < $1.datetime }) {
                 let dateStr = transaction.datetime.formatted(date: .numeric, time: .shortened)
                 let type = transaction.type.rawValue
@@ -288,34 +289,121 @@ struct ExportView: View {
                 let category1 = transaction.categoryL1
                 let category2 = transaction.categoryL2
                 let projectName = projectDict[transaction.projectId] ?? "未知项目"
-                let note = transaction.note.replacingOccurrences(of: ",", with: "，") // 替换逗号避免CSV格式错误
-                
+                let note = transaction.note
+                    .replacingOccurrences(of: ",", with: "，")
+                    .replacingOccurrences(of: "\n", with: " ")
+
                 csvText += "\(dateStr),\(type),\(currency),\(amount),\(category1),\(category2),\(projectName),\(note)\n"
             }
-            
-            // 保存到临时文件
+
             let fileName = "账本导出_\(startDate.formatted(date: .numeric, time: .omitted))_\(endDate.formatted(date: .numeric, time: .omitted)).csv"
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
-            
+
             try csvText.write(to: tempURL, atomically: true, encoding: .utf8)
-            
+
             fileURL = tempURL
             showShareSheet = true
-            
+
+        } catch {
+            errorMessage = "导出失败: \(error.localizedDescription)"
+        }
+    }
+
+    private func exportToXLS() {
+        let repo = TransactionRepository(modelContext: modelContext)
+        let projectRepo = ProjectRepository(modelContext: modelContext)
+
+        do {
+            let transactions = try repo.fetch(from: startDate, to: endDate)
+
+            let projects = try projectRepo.fetchAll()
+            let projectDict = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.name) })
+
+            let headers = ["时间", "类型", "币种", "金额", "一级分类", "二级分类", "项目", "备注"]
+
+            let rows: [[String]] = transactions
+                .sorted(by: { $0.datetime < $1.datetime })
+                .map { t in
+                    let projectName = projectDict[t.projectId] ?? "未知项目"
+                    return [
+                        t.datetime.formatted(date: .numeric, time: .shortened),
+                        t.type.rawValue,
+                        t.currency.rawValue,
+                        t.amount.formatted(),
+                        t.categoryL1,
+                        t.categoryL2,
+                        projectName,
+                        t.note
+                    ]
+                }
+
+            let xml = ExcelXMLBuilder.buildWorkbook(sheetName: "流水", headers: headers, rows: rows)
+
+            let fileName = "账本导出_\(startDate.formatted(date: .numeric, time: .omitted))_\(endDate.formatted(date: .numeric, time: .omitted)).xls"
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+
+            try xml.write(to: tempURL, atomically: true, encoding: .utf8)
+
+            fileURL = tempURL
+            showShareSheet = true
         } catch {
             errorMessage = "导出失败: \(error.localizedDescription)"
         }
     }
 }
 
+/// Excel 2003 XML Spreadsheet (最轻量的“真Excel文件”写法)
+enum ExcelXMLBuilder {
+    static func buildWorkbook(sheetName: String, headers: [String], rows: [[String]]) -> String {
+        let safeSheetName = xmlEscape(sheetName)
+
+        func cell(_ value: String) -> String {
+            let v = xmlEscape(value)
+            return "<Cell><Data ss:Type=\"String\">\(v)</Data></Cell>"
+        }
+
+        let headerRow = "<Row>\(headers.map(cell).joined())</Row>"
+        let bodyRows = rows.map { row in
+            "<Row>\(row.map(cell).joined())</Row>"
+        }.joined(separator: "\n")
+
+        return """
+<?xml version=\"1.0\"?>
+<?mso-application progid=\"Excel.Sheet\"?>
+<Workbook xmlns=\"urn:schemas-microsoft-com:office:spreadsheet\"
+ xmlns:o=\"urn:schemas-microsoft-com:office:office\"
+ xmlns:x=\"urn:schemas-microsoft-com:office:excel\"
+ xmlns:ss=\"urn:schemas-microsoft-com:office:spreadsheet\"
+ xmlns:html=\"http://www.w3.org/TR/REC-html40\">
+  <Worksheet ss:Name=\"\(safeSheetName)\">
+    <Table>
+      \(headerRow)
+      \(bodyRows)
+    </Table>
+  </Worksheet>
+</Workbook>
+"""
+    }
+
+    private static func xmlEscape(_ s: String) -> String {
+        s
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&apos;")
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+    }
+}
+
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
-    
+
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
-        return controller
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
-    
+
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
     }
 }

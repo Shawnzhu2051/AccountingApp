@@ -4,22 +4,29 @@ import SwiftData
 struct AddTransactionView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var amount: String = ""
     @State private var currency: Currency = .sgd
     @State private var type: TransactionType = .expense
     @State private var datetime: Date = Date()
+
+    // 为兼容收入分类(单层)：
+    // - 支出: categoryL1=一级分类, categoryL2=二级分类
+    // - 收入: categoryL1="收入", categoryL2=收入分类(工资收入等)
     @State private var categoryL1: String = ""
     @State private var categoryL2: String = ""
+
     @State private var note: String = ""
     @State private var showCategoryPicker = false
     @State private var errorMessage: String?
-    
+
+    @State private var defaultProjectName: String = "日常项目"
+
     var body: some View {
         NavigationStack {
             ZStack {
                 Color.groupedBackground.ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: 20) {
                         // 收支类型
@@ -29,19 +36,30 @@ struct AddTransactionView: View {
                         }
                         .pickerStyle(.segmented)
                         .padding(.horizontal)
-                        
+                        .onChange(of: type) { _, newValue in
+                            // 切换收支时，清空分类避免脏数据
+                            categoryL1 = ""
+                            categoryL2 = ""
+
+                            // 收入默认给一个更合理的初始值(仍然要求用户确认可改)
+                            if newValue == .income, let first = CategoryDictionary.incomeCategories.first {
+                                categoryL1 = "收入"
+                                categoryL2 = first
+                            }
+                        }
+
                         // 金额输入
                         VStack(spacing: 8) {
                             Text("金额")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            
+
                             HStack {
                                 Text(currency.symbol)
                                     .font(.currencyAmount)
                                     .foregroundColor(.secondary)
-                                
+
                                 TextField("0.00", text: $amount)
                                     .keyboardType(.decimalPad)
                                     .font(.currencyAmount)
@@ -51,14 +69,14 @@ struct AddTransactionView: View {
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
-                
+
                         // 币种选择
                         VStack(spacing: 8) {
                             Text("币种")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            
+
                             Picker("币种", selection: $currency) {
                                 Text("SGD").tag(Currency.sgd)
                                 Text("RMB").tag(Currency.rmb)
@@ -68,7 +86,7 @@ struct AddTransactionView: View {
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
-                        
+
                         // 分类选择
                         Button(action: {
                             showCategoryPicker = true
@@ -77,25 +95,32 @@ struct AddTransactionView: View {
                                 Image(systemName: "tag.fill")
                                     .font(.title3)
                                     .foregroundColor(.accentBlue)
-                                
+
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("分类")
                                         .font(.caption)
                                         .foregroundColor(.secondary)
-                                    
+
                                     if !categoryL1.isEmpty && !categoryL2.isEmpty {
-                                        Text("\(categoryL2) · \(categoryL1)")
-                                            .font(.headline)
-                                            .foregroundColor(.primary)
+                                        // 支出：二级 · 一级；收入：收入分类
+                                        if type == .expense {
+                                            Text("\(categoryL2) · \(categoryL1)")
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                        } else {
+                                            Text(categoryL2)
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                        }
                                     } else {
                                         Text("请选择分类")
                                             .font(.headline)
                                             .foregroundColor(.red)
                                     }
                                 }
-                                
+
                                 Spacer()
-                                
+
                                 Image(systemName: "chevron.right")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -103,57 +128,58 @@ struct AddTransactionView: View {
                             .sectionCardStyle()
                         }
                         .padding(.horizontal)
-                        
-                        // 日期选择（精确到天）
+
+                        // 时间选择（默认现在）
                         VStack(spacing: 8) {
-                            Text("日期")
+                            Text("时间")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            
-                            DatePicker("", selection: $datetime, displayedComponents: .date)
+
+                            DatePicker("", selection: $datetime, displayedComponents: [.date, .hourAndMinute])
                                 .datePickerStyle(.compact)
                                 .labelsHidden()
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
-                        
-                        // 项目显示
+
+                        // 项目显示（默认为日常项目）
                         HStack(spacing: 12) {
                             Image(systemName: "folder.fill")
                                 .font(.title3)
                                 .foregroundColor(.accentOrange)
-                            
+
                             VStack(alignment: .leading, spacing: 4) {
                                 Text("项目")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                
-                                Text("默认项目")
+
+                                Text(defaultProjectName)
                                     .font(.headline)
                             }
-                            
+
                             Spacer()
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
-                        
+
                         // 备注输入（可选）
                         VStack(spacing: 8) {
                             Text("备注（可选）")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            
+
                             TextField("添加备注...", text: $note, axis: .vertical)
                                 .lineLimit(3...5)
                                 .textFieldStyle(.roundedBorder)
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
-                        
+
                         Spacer()
                     }
+                    .padding(.top, 8)
                 }
             }
             .navigationTitle("记账")
@@ -164,7 +190,7 @@ struct AddTransactionView: View {
                         dismiss()
                     }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
                         saveTransaction()
@@ -173,6 +199,7 @@ struct AddTransactionView: View {
             }
             .sheet(isPresented: $showCategoryPicker) {
                 CategoryPickerView(
+                    type: type,
                     selectedL1: $categoryL1,
                     selectedL2: $categoryL2
                 )
@@ -187,38 +214,62 @@ struct AddTransactionView: View {
                 }
             }
         }
+        .onAppear {
+            // 初始化默认项目名称
+            let projectRepo = ProjectRepository(modelContext: modelContext)
+            do {
+                if let project = try projectRepo.fetchDefault() {
+                    defaultProjectName = project.name
+                }
+            } catch {
+                // ignore
+            }
+
+            // 收入类型默认给个合理的初始分类
+            if type == .income, categoryL2.isEmpty, let first = CategoryDictionary.incomeCategories.first {
+                categoryL1 = "收入"
+                categoryL2 = first
+            }
+        }
     }
-    
+
     private func saveTransaction() {
         // 验证
         guard !amount.isEmpty,
               let amountDecimal = Decimal(string: amount),
+              amountDecimal > 0,
               !categoryL1.isEmpty,
               !categoryL2.isEmpty else {
             errorMessage = "请填写所有必填字段"
             return
         }
-        
+
         // 获取默认项目
         let projectRepo = ProjectRepository(modelContext: modelContext)
-        guard let defaultProject = try? projectRepo.fetchDefault() else {
+        let project: Project?
+        do {
+            project = try projectRepo.fetchDefault()
+        } catch {
+            project = nil
+        }
+        guard let project else {
             errorMessage = "未找到默认项目"
             return
         }
-        
+
         let amountMinor = Int64(truncating: (amountDecimal * Decimal(100)) as NSNumber)
-        
+
         let transaction = Transaction(
             amountMinor: amountMinor,
             currency: currency,
             type: type,
             datetime: datetime,
-            projectId: defaultProject.id,
+            projectId: project.id,
             categoryL1: categoryL1,
             categoryL2: categoryL2,
             note: note
         )
-        
+
         do {
             let repo = TransactionRepository(modelContext: modelContext)
             try repo.save(transaction)
@@ -230,56 +281,85 @@ struct AddTransactionView: View {
 }
 
 struct CategoryPickerView: View {
+    let type: TransactionType
+
     @Binding var selectedL1: String
     @Binding var selectedL2: String
     @Environment(\.dismiss) private var dismiss
-    
+
+    // 支出用
     @State private var tempL1: String = ""
     @State private var tempL2: String = ""
-    
+
+    // 收入用
+    @State private var tempIncome: String = ""
+
     var body: some View {
         NavigationStack {
-            HStack(spacing: 0) {
-                // 一级分类
-                List(CategoryDictionary.level1List, id: \.self) { level1 in
-                    Button(action: {
-                        tempL1 = level1
-                    }) {
-                        HStack {
-                            Text(level1)
-                            Spacer()
-                            if level1 == tempL1 {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+            Group {
+                if type == .expense {
+                    HStack(spacing: 0) {
+                        // 一级分类
+                        List(CategoryDictionary.expenseLevel1List, id: \.self) { level1 in
+                            Button(action: {
+                                tempL1 = level1
+                            }) {
+                                HStack {
+                                    Text(level1)
+                                    Spacer()
+                                    if level1 == tempL1 {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
+                        .listStyle(.plain)
+                        .frame(maxWidth: .infinity)
+
+                        Divider()
+
+                        // 二级分类
+                        List(CategoryDictionary.expenseLevel2List(for: tempL1), id: \.self) { level2 in
+                            Button(action: {
+                                tempL2 = level2
+                                selectedL1 = tempL1
+                                selectedL2 = tempL2
+                                dismiss()
+                            }) {
+                                HStack {
+                                    Text(level2)
+                                    Spacer()
+                                    if level2 == tempL2 {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                        }
+                        .listStyle(.plain)
+                        .frame(maxWidth: .infinity)
+                    }
+                } else {
+                    List(CategoryDictionary.incomeCategories, id: \.self) { item in
+                        Button {
+                            tempIncome = item
+                            selectedL1 = "收入"
+                            selectedL2 = item
+                            dismiss()
+                        } label: {
+                            HStack {
+                                Text(item)
+                                Spacer()
+                                if item == tempIncome {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
                             }
                         }
                     }
+                    .listStyle(.plain)
                 }
-                .listStyle(.plain)
-                .frame(maxWidth: .infinity)
-                
-                Divider()
-                
-                // 二级分类
-                List(CategoryDictionary.level2List(for: tempL1), id: \.self) { level2 in
-                    Button(action: {
-                        tempL2 = level2
-                        selectedL1 = tempL1
-                        selectedL2 = tempL2
-                        dismiss()
-                    }) {
-                        HStack {
-                            Text(level2)
-                            Spacer()
-                            if level2 == tempL2 {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                    }
-                }
-                .listStyle(.plain)
-                .frame(maxWidth: .infinity)
             }
             .navigationTitle("选择分类")
             .navigationBarTitleDisplayMode(.inline)
@@ -292,12 +372,19 @@ struct CategoryPickerView: View {
             }
         }
         .onAppear {
-            if !selectedL1.isEmpty {
-                tempL1 = selectedL1
-            } else if let first = CategoryDictionary.level1List.first {
-                tempL1 = first
+            if type == .expense {
+                if !selectedL1.isEmpty {
+                    tempL1 = selectedL1
+                } else if let first = CategoryDictionary.expenseLevel1List.first {
+                    tempL1 = first
+                }
+                tempL2 = selectedL2
+            } else {
+                tempIncome = selectedL2
+                if tempIncome.isEmpty, let first = CategoryDictionary.incomeCategories.first {
+                    tempIncome = first
+                }
             }
-            tempL2 = selectedL2
         }
     }
 }

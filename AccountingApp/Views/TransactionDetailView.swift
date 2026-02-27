@@ -107,6 +107,7 @@ struct TransactionDetailView: View {
         }
         .sheet(isPresented: $showCategoryPicker) {
             CategoryPickerView(
+                type: type,
                 selectedL1: $categoryL1,
                 selectedL2: $categoryL2
             )
