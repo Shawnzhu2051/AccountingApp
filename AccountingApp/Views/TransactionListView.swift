@@ -47,10 +47,12 @@ struct TransactionListView: View {
         }
         .onAppear {
             if viewModel == nil {
-                let vm = TransactionListViewModel(modelContext: modelContext)
-                viewModel = vm
-                vm.loadTransactions()
+                viewModel = TransactionListViewModel(modelContext: modelContext)
             }
+            viewModel?.loadTransactions()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .transactionsDidChange)) { _ in
+            viewModel?.loadTransactions()
         }
     }
     

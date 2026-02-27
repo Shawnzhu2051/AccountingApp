@@ -1,4 +1,5 @@
 import SwiftUI
+import Foundation
 
 // MARK: - 颜色主题
 extension Color {
@@ -8,11 +9,11 @@ extension Color {
     static let accentRed = Color(red: 1.0, green: 0.3, blue: 0.3)
     static let accentOrange = Color(red: 1.0, green: 0.6, blue: 0.2)
     static let accentPurple = Color(red: 0.6, green: 0.4, blue: 0.9)
-    
+
     // 背景色
     static let cardBackground = Color(.systemBackground)
     static let groupedBackground = Color(.systemGroupedBackground)
-    
+
     // 图表配色
     static let chartColors: [Color] = [
         Color(red: 0.3, green: 0.6, blue: 1.0),
@@ -26,6 +27,11 @@ extension Color {
     ]
 }
 
+// MARK: - 通知
+extension Notification.Name {
+    static let transactionsDidChange = Notification.Name("transactionsDidChange")
+}
+
 // MARK: - 视图修饰符
 extension View {
     func cardStyle() -> some View {
@@ -35,7 +41,7 @@ extension View {
             .cornerRadius(16)
             .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
     }
-    
+
     func sectionCardStyle() -> some View {
         self
             .padding(.vertical, 12)

@@ -73,7 +73,7 @@ struct TransactionDetailView: View {
             
             // 项目
             Section("项目") {
-                Text("默认项目")
+                Text("暂不支持编辑项目")
                     .foregroundColor(.secondary)
             }
             

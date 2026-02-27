@@ -20,6 +20,8 @@ struct AddTransactionView: View {
     @State private var showCategoryPicker = false
     @State private var errorMessage: String?
 
+    @State private var projects: [Project] = []
+    @State private var selectedProjectId: UUID?
     @State private var defaultProjectName: String = "日常项目"
 
     var body: some View {
@@ -129,36 +131,47 @@ struct AddTransactionView: View {
                         }
                         .padding(.horizontal)
 
-                        // 时间选择（默认现在）
+                        // 时间选择（默认现在，精确到天）
                         VStack(spacing: 8) {
                             Text("时间")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                            DatePicker("", selection: $datetime, displayedComponents: [.date, .hourAndMinute])
+                            DatePicker("", selection: $datetime, displayedComponents: .date)
                                 .datePickerStyle(.compact)
                                 .labelsHidden()
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
 
-                        // 项目显示（默认为日常项目）
-                        HStack(spacing: 12) {
-                            Image(systemName: "folder.fill")
-                                .font(.title3)
-                                .foregroundColor(.accentOrange)
+                        // 项目选择（默认日常项目）
+                        VStack(spacing: 8) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "folder.fill")
+                                    .font(.title3)
+                                    .foregroundColor(.accentOrange)
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("项目")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("项目")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
 
-                                Text(defaultProjectName)
-                                    .font(.headline)
+                                    Text(defaultProjectName)
+                                        .font(.headline)
+                                }
+
+                                Spacer()
                             }
 
-                            Spacer()
+                            if !projects.isEmpty {
+                                Picker("项目", selection: $selectedProjectId) {
+                                    ForEach(projects) { project in
+                                        Text(project.name).tag(Optional(project.id))
+                                    }
+                                }
+                                .pickerStyle(.menu)
+                            }
                         }
                         .sectionCardStyle()
                         .padding(.horizontal)
@@ -215,11 +228,16 @@ struct AddTransactionView: View {
             }
         }
         .onAppear {
-            // 初始化默认项目名称
+            // 初始化项目（列表+默认）
             let projectRepo = ProjectRepository(modelContext: modelContext)
             do {
-                if let project = try projectRepo.fetchDefault() {
-                    defaultProjectName = project.name
+                projects = try projectRepo.fetchAll()
+                if let defaultProject = try projectRepo.fetchDefault() {
+                    defaultProjectName = defaultProject.name
+                    selectedProjectId = defaultProject.id
+                } else if let first = projects.first {
+                    defaultProjectName = first.name
+                    selectedProjectId = first.id
                 }
             } catch {
                 // ignore
@@ -229,6 +247,11 @@ struct AddTransactionView: View {
             if type == .income, categoryL2.isEmpty, let first = CategoryDictionary.incomeCategories.first {
                 categoryL1 = "收入"
                 categoryL2 = first
+            }
+        }
+        .onChange(of: selectedProjectId) { _, newValue in
+            if let id = newValue, let p = projects.first(where: { $0.id == id }) {
+                defaultProjectName = p.name
             }
         }
     }
@@ -244,16 +267,21 @@ struct AddTransactionView: View {
             return
         }
 
-        // 获取默认项目
+        // 获取选择的项目（默认=日常项目）
         let projectRepo = ProjectRepository(modelContext: modelContext)
         let project: Project?
         do {
-            project = try projectRepo.fetchDefault()
+            let all = try projectRepo.fetchAll()
+            if let id = selectedProjectId {
+                project = all.first(where: { $0.id == id })
+            } else {
+                project = try projectRepo.fetchDefault() ?? all.first
+            }
         } catch {
             project = nil
         }
         guard let project else {
-            errorMessage = "未找到默认项目"
+            errorMessage = "未找到项目"
             return
         }
 
@@ -273,6 +301,7 @@ struct AddTransactionView: View {
         do {
             let repo = TransactionRepository(modelContext: modelContext)
             try repo.save(transaction)
+            NotificationCenter.default.post(name: .transactionsDidChange, object: nil)
             dismiss()
         } catch {
             errorMessage = "保存失败: \(error.localizedDescription)"
