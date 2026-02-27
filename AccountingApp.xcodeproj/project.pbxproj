@@ -24,6 +24,8 @@
 		D03DC5FEB89C070A0C89800C /* ReportViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 453D4E1FBE4DA93056FDC0D7 /* ReportViewModel.swift */; };
 		D3A4DE16749DE06343EDA877 /* ProjectRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29563B3C7BA4400D90567D42 /* ProjectRepository.swift */; };
 		D599F1D557BBFFF10BD0E379 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A62A1DDDE56A952CB67BA6 /* SettingsView.swift */; };
+		DCA59B65521DD3E3DC36A485 /* ReportView.swift.bak in Resources */ = {isa = PBXBuildFile; fileRef = B1DA6B04193D2E4DEDE95E30 /* ReportView.swift.bak */; };
+		E572AE630BB5CEE8B924E4F2 /* CategoryIcons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A29BC1C0E6076CDE935F0E /* CategoryIcons.swift */; };
 		EBE4034DC936EC9163767754 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1B58B1494FA3261B0CD42C03 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -36,12 +38,14 @@
 		29563B3C7BA4400D90567D42 /* ProjectRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectRepository.swift; sourceTree = "<group>"; };
 		2DDB0F6D573ECD74796802FE /* ReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportView.swift; sourceTree = "<group>"; };
 		332B19017D42C75D52DBD873 /* ProjectViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectViewModel.swift; sourceTree = "<group>"; };
+		41A29BC1C0E6076CDE935F0E /* CategoryIcons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CategoryIcons.swift; sourceTree = "<group>"; };
 		453D4E1FBE4DA93056FDC0D7 /* ReportViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportViewModel.swift; sourceTree = "<group>"; };
 		4B43C5F08883C8C36BCEC224 /* TransactionListViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionListViewModel.swift; sourceTree = "<group>"; };
 		6426AFE8DF0A3C72E63F4FA9 /* TransactionListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransactionListView.swift; sourceTree = "<group>"; };
 		7979F13ABD384B3A9359A223 /* AddTransactionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddTransactionView.swift; sourceTree = "<group>"; };
 		9B713834BA55E2E57465FD66 /* Category.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Category.swift; sourceTree = "<group>"; };
 		A2EC0A64B7EFB619292449BA /* AccountingApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AccountingApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1DA6B04193D2E4DEDE95E30 /* ReportView.swift.bak */ = {isa = PBXFileReference; path = ReportView.swift.bak; sourceTree = "<group>"; };
 		B360CA09D8FAE2E821F5BBB6 /* Transaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Transaction.swift; sourceTree = "<group>"; };
 		E19B12C7733FB78DD163CF4D /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		E296F1A287FF2B550FD7BBC5 /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
@@ -71,6 +75,7 @@
 		7C3BF3090898C7964B5B40A1 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				41A29BC1C0E6076CDE935F0E /* CategoryIcons.swift */,
 				E19B12C7733FB78DD163CF4D /* Theme.swift */,
 			);
 			path = Utilities;
@@ -93,6 +98,7 @@
 				7979F13ABD384B3A9359A223 /* AddTransactionView.swift */,
 				E34F0C9C0D343AE8A8F22F19 /* ContentView.swift */,
 				2DDB0F6D573ECD74796802FE /* ReportView.swift */,
+				B1DA6B04193D2E4DEDE95E30 /* ReportView.swift.bak */,
 				12A62A1DDDE56A952CB67BA6 /* SettingsView.swift */,
 				E869D729DA0BF7B9B7CC4C99 /* TransactionDetailView.swift */,
 				6426AFE8DF0A3C72E63F4FA9 /* TransactionListView.swift */,
@@ -188,6 +194,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				EBE4034DC936EC9163767754 /* Assets.xcassets in Resources */,
+				DCA59B65521DD3E3DC36A485 /* ReportView.swift.bak in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -202,6 +209,7 @@
 				6A61360C687E0993F92A5CFC /* AddTransactionView.swift in Sources */,
 				B69737606DD5BA438947748B /* AddTransactionViewModel.swift in Sources */,
 				29D6D0FD8BCDB01A6456A5BF /* Category.swift in Sources */,
+				E572AE630BB5CEE8B924E4F2 /* CategoryIcons.swift in Sources */,
 				013FF09B5C5E2E1E860E3AA5 /* ContentView.swift in Sources */,
 				3A85DF1305A1B2C4CE8ABFB7 /* Project.swift in Sources */,
 				D3A4DE16749DE06343EDA877 /* ProjectRepository.swift in Sources */,

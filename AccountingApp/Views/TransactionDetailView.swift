@@ -65,9 +65,9 @@ struct TransactionDetailView: View {
                 }
             }
             
-            // 时间
-            Section("时间") {
-                DatePicker("时间", selection: $datetime)
+            // 日期
+            Section("日期") {
+                DatePicker("日期", selection: $datetime, displayedComponents: .date)
             }
             
             // 项目

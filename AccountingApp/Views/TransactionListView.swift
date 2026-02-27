@@ -109,7 +109,7 @@ struct TransactionRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // 分类图标
+            // 二级分类图标
             categoryIcon
                 .frame(width: 48, height: 48)
                 .background(categoryColor.opacity(0.15))
@@ -117,22 +117,14 @@ struct TransactionRow: View {
             
             // 交易信息
             VStack(alignment: .leading, spacing: 4) {
+                // 二级分类名称
                 Text(transaction.categoryL2)
                     .font(.headline)
                 
-                HStack(spacing: 6) {
-                    Text(transaction.categoryL1)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text("•")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Text(transaction.datetime.formatted(date: .omitted, time: .shortened))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                // 一级分类
+                Text(transaction.categoryL1)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
             Spacer()
@@ -159,37 +151,13 @@ struct TransactionRow: View {
     }
     
     private var categoryIcon: some View {
-        Image(systemName: categoryIconName)
+        Image(systemName: CategoryIcons.icon(for: transaction.categoryL2))
             .font(.title3)
             .foregroundColor(categoryColor)
     }
     
-    private var categoryIconName: String {
-        switch transaction.categoryL1 {
-        case "娱乐": return "party.popper.fill"
-        case "购物": return "cart.fill"
-        case "日常": return "house.fill"
-        case "出行": return "car.fill"
-        case "人情": return "gift.fill"
-        case "金融": return "chart.line.uptrend.xyaxis"
-        case "医疗": return "cross.case.fill"
-        case "住房": return "building.2.fill"
-        default: return "circle.fill"
-        }
-    }
-    
     private var categoryColor: Color {
-        switch transaction.categoryL1 {
-        case "娱乐": return .accentPurple
-        case "购物": return .accentOrange
-        case "日常": return .accentBlue
-        case "出行": return .accentGreen
-        case "人情": return Color(red: 1.0, green: 0.4, blue: 0.5)
-        case "金融": return Color(red: 0.9, green: 0.7, blue: 0.3)
-        case "医疗": return .accentRed
-        case "住房": return Color(red: 0.5, green: 0.6, blue: 0.8)
-        default: return .gray
-        }
+        CategoryIcons.color(for: transaction.categoryL1)
     }
 }
 

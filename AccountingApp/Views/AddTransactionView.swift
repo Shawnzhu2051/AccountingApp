@@ -103,14 +103,14 @@ struct AddTransactionView: View {
                         }
                         .padding(.horizontal)
                         
-                        // 时间选择
+                        // 日期选择（精确到天）
                         VStack(spacing: 8) {
-                            Text("时间")
+                            Text("日期")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
-                            DatePicker("", selection: $datetime)
+                            DatePicker("", selection: $datetime, displayedComponents: .date)
                                 .datePickerStyle(.compact)
                                 .labelsHidden()
                         }
