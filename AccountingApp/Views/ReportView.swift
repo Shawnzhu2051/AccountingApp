@@ -9,18 +9,23 @@ struct ReportView: View {
     @State private var endDate = Date()
     @State private var selectedCurrency: Currency? = nil
     @State private var showDatePicker = false
+
+    /// 报表大Tab：收入/支出
+    @State private var reportType: TransactionType = .expense
+
     @State private var categoryLevel: CategoryLevel = .level1
-    
+
     enum CategoryLevel {
         case level1, level2
     }
-    
+
     var body: some View {
         NavigationStack {
             List {
+                typeTabSection
                 dateRangeSection
                 currencyFilterSection
-                incomeExpenseSection
+                summarySection
                 categoryStatsSection
                 timeTrendSection
                 projectStatsSection
@@ -45,6 +50,19 @@ struct ReportView: View {
             loadTransactions()
         }) {
             Image(systemName: "arrow.clockwise")
+        }
+    }
+
+    private var typeTabSection: some View {
+        Section {
+            Picker("类型", selection: $reportType) {
+                Text("支出").tag(TransactionType.expense)
+                Text("收入").tag(TransactionType.income)
+            }
+            .pickerStyle(.segmented)
+        }
+        .onChange(of: reportType) { _, _ in
+            loadTransactions()
         }
     }
     
@@ -78,11 +96,18 @@ struct ReportView: View {
         }
     }
     
-    private var incomeExpenseSection: some View {
-        Section("收支对比") {
-            ForEach(Array(incomeExpenseStats().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
-                if let stats = incomeExpenseStats()[currency] {
-                    IncomeExpenseChart(currency: currency, stats: stats)
+    private var summarySection: some View {
+        Section(reportType == .expense ? "支出总览" : "收入总览") {
+            ForEach(Array(totalByCurrency().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
+                if let total = totalByCurrency()[currency] {
+                    HStack {
+                        Text(currency.rawValue)
+                            .font(.headline)
+                        Spacer()
+                        Text("\(currency.symbol)\(total.formatted())")
+                            .font(.headline)
+                            .foregroundColor(reportType == .expense ? .accentRed : .accentGreen)
+                    }
                 }
             }
         }
@@ -161,6 +186,9 @@ struct ReportView: View {
 
             var results = try repo.fetch(from: from, to: inclusiveEnd)
 
+            // 报表大Tab：收入/支出分开
+            results = results.filter { $0.type == reportType }
+
             if let currency = selectedCurrency {
                 results = results.filter { $0.currency == currency }
             }
@@ -203,25 +231,17 @@ struct ReportView: View {
         return result
     }
     
-    private func incomeExpenseStats() -> [Currency: (income: Decimal, expense: Decimal)] {
-        var result: [Currency: (income: Decimal, expense: Decimal)] = [:]
-        
+    private func totalByCurrency() -> [Currency: Decimal] {
+        var result: [Currency: Decimal] = [:]
+
         for currency in [Currency.sgd, .rmb, .usd] {
             let currencyTransactions = transactions.filter { $0.currency == currency }
-            
-            let income = currencyTransactions
-                .filter { $0.type == .income }
-                .reduce(Decimal(0)) { $0 + $1.amount }
-            
-            let expense = currencyTransactions
-                .filter { $0.type == .expense }
-                .reduce(Decimal(0)) { $0 + $1.amount }
-            
-            if income > 0 || expense > 0 {
-                result[currency] = (income: income, expense: expense)
+            let total = currencyTransactions.reduce(Decimal(0)) { $0 + $1.amount }
+            if total > 0 {
+                result[currency] = total
             }
         }
-        
+
         return result
     }
     
