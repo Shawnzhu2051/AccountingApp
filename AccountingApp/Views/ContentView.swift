@@ -9,7 +9,7 @@ struct ContentView: View {
         ZStack {
             MainTabView()
             
-            // 全局浮动按钮
+            // 优化的浮动按钮
             VStack {
                 Spacer()
                 HStack {
@@ -17,15 +17,25 @@ struct ContentView: View {
                     Button(action: {
                         showAddTransaction = true
                     }) {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .frame(width: 60, height: 60)
-                            .background(Color.blue)
-                            .clipShape(Circle())
-                            .shadow(radius: 4)
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.accentBlue, .accentBlue.opacity(0.8)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 64, height: 64)
+                                .shadow(color: .accentBlue.opacity(0.3), radius: 12, x: 0, y: 6)
+                            
+                            Image(systemName: "plus")
+                                .font(.system(size: 24, weight: .semibold))
+                                .foregroundColor(.white)
+                        }
                     }
-                    .padding()
+                    .padding(.trailing, 20)
+                    .padding(.bottom, 20)
                 }
             }
         }

@@ -16,62 +16,129 @@ struct AddTransactionView: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                // 收支类型
-                Section {
-                    Picker("类型", selection: $type) {
-                        Text(TransactionType.expense.rawValue).tag(TransactionType.expense)
-                        Text(TransactionType.income.rawValue).tag(TransactionType.income)
-                    }
-                    .pickerStyle(.segmented)
-                }
+            ZStack {
+                Color.groupedBackground.ignoresSafeArea()
                 
-                // 金额
-                Section("金额") {
-                    TextField("0.00", text: $amount)
-                        .keyboardType(.decimalPad)
-                        .font(.system(size: 36, weight: .bold))
-                }
-                
-                // 币种
-                Section("币种") {
-                    Picker("币种", selection: $currency) {
-                        Text("SGD").tag(Currency.sgd)
-                        Text("RMB").tag(Currency.rmb)
-                        Text("USD").tag(Currency.usd)
-                    }
-                    .pickerStyle(.segmented)
-                }
-                
-                // 分类
-                Section("分类") {
-                    Button(action: {
-                        showCategoryPicker = true
-                    }) {
-                        HStack {
-                            Text("选择分类")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            if !categoryL1.isEmpty && !categoryL2.isEmpty {
-                                Text("\(categoryL1) - \(categoryL2)")
+                ScrollView {
+                    VStack(spacing: 20) {
+                        // 收支类型
+                        Picker("类型", selection: $type) {
+                            Text(TransactionType.expense.rawValue).tag(TransactionType.expense)
+                            Text(TransactionType.income.rawValue).tag(TransactionType.income)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal)
+                        
+                        // 金额输入
+                        VStack(spacing: 8) {
+                            Text("金额")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            HStack {
+                                Text(currency.symbol)
+                                    .font(.currencyAmount)
                                     .foregroundColor(.secondary)
-                            } else {
-                                Text("必填")
-                                    .foregroundColor(.red)
+                                
+                                TextField("0.00", text: $amount)
+                                    .keyboardType(.decimalPad)
+                                    .font(.currencyAmount)
+                                    .foregroundColor(type == .expense ? .accentRed : .accentGreen)
+                                    .multilineTextAlignment(.leading)
                             }
                         }
+                        .sectionCardStyle()
+                        .padding(.horizontal)
+                
+                        // 币种选择
+                        VStack(spacing: 8) {
+                            Text("币种")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            Picker("币种", selection: $currency) {
+                                Text("SGD").tag(Currency.sgd)
+                                Text("RMB").tag(Currency.rmb)
+                                Text("USD").tag(Currency.usd)
+                            }
+                            .pickerStyle(.segmented)
+                        }
+                        .sectionCardStyle()
+                        .padding(.horizontal)
+                        
+                        // 分类选择
+                        Button(action: {
+                            showCategoryPicker = true
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "tag.fill")
+                                    .font(.title3)
+                                    .foregroundColor(.accentBlue)
+                                
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("分类")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    
+                                    if !categoryL1.isEmpty && !categoryL2.isEmpty {
+                                        Text("\(categoryL2) · \(categoryL1)")
+                                            .font(.headline)
+                                            .foregroundColor(.primary)
+                                    } else {
+                                        Text("请选择分类")
+                                            .font(.headline)
+                                            .foregroundColor(.red)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .sectionCardStyle()
+                        }
+                        .padding(.horizontal)
+                        
+                        // 时间选择
+                        VStack(spacing: 8) {
+                            Text("时间")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            DatePicker("", selection: $datetime)
+                                .datePickerStyle(.compact)
+                                .labelsHidden()
+                        }
+                        .sectionCardStyle()
+                        .padding(.horizontal)
+                        
+                        // 项目显示
+                        HStack(spacing: 12) {
+                            Image(systemName: "folder.fill")
+                                .font(.title3)
+                                .foregroundColor(.accentOrange)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("项目")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Text("默认项目")
+                                    .font(.headline)
+                            }
+                            
+                            Spacer()
+                        }
+                        .sectionCardStyle()
+                        .padding(.horizontal)
+                        
+                        Spacer()
                     }
-                }
-                
-                // 时间
-                Section("时间") {
-                    DatePicker("时间", selection: $datetime)
-                }
-                
-                // 项目
-                Section("项目") {
-                    Text("默认项目")
-                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("记账")

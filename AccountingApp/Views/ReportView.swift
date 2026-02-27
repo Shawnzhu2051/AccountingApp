@@ -18,222 +18,134 @@ struct ReportView: View {
     var body: some View {
         NavigationStack {
             List {
-                // 时间范围选择
-                Section {
-                    Button(action: {
-                        showDatePicker = true
-                    }) {
-                        HStack {
-                            Text("时间范围")
-                            Spacer()
-                            Text("\(startDate.formatted(date: .abbreviated, time: .omitted)) - \(endDate.formatted(date: .abbreviated, time: .omitted))")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                // 币种筛选
-                Section {
-                    Picker("币种", selection: $selectedCurrency) {
-                        Text("全部").tag(nil as Currency?)
-                        Text("SGD").tag(Currency.sgd as Currency?)
-                        Text("RMB").tag(Currency.rmb as Currency?)
-                        Text("USD").tag(Currency.usd as Currency?)
-                    }
-                    .pickerStyle(.segmented)
-                }
-                .onChange(of: selectedCurrency) { _, _ in
-                    loadTransactions()
-                }
-                
-                // 收支对比
-                Section("收支对比") {
-                    ForEach(Array(incomeExpenseStats().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
-                        if let stats = incomeExpenseStats()[currency] {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(currency.rawValue)
-                                    .font(.headline)
-                                
-                                Chart {
-                                    BarMark(
-                                        x: .value("类型", "收入"),
-                                        y: .value("金额", NSDecimalNumber(decimal: stats.income).doubleValue)
-                                    )
-                                    .foregroundStyle(.green)
-                                    
-                                    BarMark(
-                                        x: .value("类型", "支出"),
-                                        y: .value("金额", NSDecimalNumber(decimal: stats.expense).doubleValue)
-                                    )
-                                    .foregroundStyle(.red)
-                                }
-                                .frame(height: 200)
-                                
-                                HStack {
-                                    VStack(alignment: .leading) {
-                                        Text("收入")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Text("\(currency.symbol)\(stats.income.formatted())")
-                                            .font(.title3)
-                                            .foregroundColor(.green)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    VStack(alignment: .trailing) {
-                                        Text("支出")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Text("\(currency.symbol)\(stats.expense.formatted())")
-                                            .font(.title3)
-                                            .foregroundColor(.red)
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    }
-                }
-                
-                // 分类饼图
-                Section {
-                    // 分类级别选择器
-                    Picker("统计级别", selection: $categoryLevel) {
-                        Text("一级分类").tag(CategoryLevel.level1)
-                        Text("二级分类").tag(CategoryLevel.level2)
-                    }
-                    .pickerStyle(.segmented)
-                } header: {
-                    Text("分类统计")
-                }
-                
-                Section {
-                    ForEach(Array(groupByCategory().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
-                        if let categories = groupByCategory()[currency] {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(currency.rawValue)
-                                    .font(.headline)
-                                
-                                Chart(categories, id: \.0) { category, amount in
-                                    SectorMark(
-                                        angle: .value("金额", NSDecimalNumber(decimal: amount).doubleValue),
-                                        innerRadius: .ratio(0.5),
-                                        angularInset: 1.5
-                                    )
-                                    .foregroundStyle(by: .value("分类", category))
-                                }
-                                .frame(height: 200)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    ForEach(categories, id: \.0) { category, amount in
-                                        HStack {
-                                            Text(category)
-                                                .font(.caption)
-                                            Spacer()
-                                            Text("\(currency.symbol)\(amount.formatted())")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    }
-                }
-                
-                // 时间趋势
-                Section("时间趋势") {
-                    ForEach(Array(groupByDate().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
-                        if let dailyData = groupByDate()[currency] {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(currency.rawValue)
-                                    .font(.headline)
-                                
-                                Chart {
-                                    ForEach(dailyData, id: \.0) { date, amount in
-                                        LineMark(
-                                            x: .value("日期", date),
-                                            y: .value("金额", NSDecimalNumber(decimal: amount).doubleValue)
-                                        )
-                                        .foregroundStyle(.blue)
-                                        .interpolationMethod(.catmullRom)
-                                    }
-                                }
-                                .frame(height: 200)
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    }
-                }
-                
-                // 项目统计
-                Section("项目统计") {
-                    ForEach(Array(groupByProject().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
-                        if let projects = groupByProject()[currency] {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text(currency.rawValue)
-                                    .font(.headline)
-                                
-                                Chart(projects, id: \.0) { projectId, amount in
-                                    BarMark(
-                                        x: .value("项目", projectNameById(projectId)),
-                                        y: .value("金额", NSDecimalNumber(decimal: amount).doubleValue)
-                                    )
-                                    .foregroundStyle(.blue)
-                                }
-                                .frame(height: 200)
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    ForEach(projects, id: \.0) { projectId, amount in
-                                        HStack {
-                                            Text(projectNameById(projectId))
-                                                .font(.caption)
-                                            Spacer()
-                                            Text("\(currency.symbol)\(amount.formatted())")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    }
-                }
+                dateRangeSection
+                currencyFilterSection
+                incomeExpenseSection
+                categoryStatsSection
+                timeTrendSection
+                projectStatsSection
             }
             .navigationTitle("报表")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        loadTransactions()
-                    }) {
-                        Image(systemName: "arrow.clockwise")
-                    }
+                    refreshButton
                 }
             }
             .sheet(isPresented: $showDatePicker) {
-                NavigationStack {
-                    Form {
-                        DatePicker("开始日期", selection: $startDate, displayedComponents: .date)
-                        DatePicker("结束日期", selection: $endDate, displayedComponents: .date)
-                    }
-                    .navigationTitle("选择时间范围")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("确定") {
-                                showDatePicker = false
-                                loadTransactions()
-                            }
-                        }
-                    }
-                }
+                datePickerSheet
             }
         }
         .onAppear {
             loadTransactions()
+        }
+    }
+    
+    private var refreshButton: some View {
+        Button(action: {
+            loadTransactions()
+        }) {
+            Image(systemName: "arrow.clockwise")
+        }
+    }
+    
+    private var dateRangeSection: some View {
+        Section {
+            Button(action: {
+                showDatePicker = true
+            }) {
+                HStack {
+                    Text("时间范围")
+                    Spacer()
+                    Text("\(startDate.formatted(date: .abbreviated, time: .omitted)) - \(endDate.formatted(date: .abbreviated, time: .omitted))")
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+    }
+    
+    private var currencyFilterSection: some View {
+        Section {
+            Picker("币种", selection: $selectedCurrency) {
+                Text("全部").tag(nil as Currency?)
+                Text("SGD").tag(Currency.sgd as Currency?)
+                Text("RMB").tag(Currency.rmb as Currency?)
+                Text("USD").tag(Currency.usd as Currency?)
+            }
+            .pickerStyle(.segmented)
+        }
+        .onChange(of: selectedCurrency) { _, _ in
+            loadTransactions()
+        }
+    }
+    
+    private var incomeExpenseSection: some View {
+        Section("收支对比") {
+            ForEach(Array(incomeExpenseStats().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
+                if let stats = incomeExpenseStats()[currency] {
+                    IncomeExpenseChart(currency: currency, stats: stats)
+                }
+            }
+        }
+    }
+    
+    private var categoryStatsSection: some View {
+        Group {
+            Section {
+                Picker("统计级别", selection: $categoryLevel) {
+                    Text("一级分类").tag(CategoryLevel.level1)
+                    Text("二级分类").tag(CategoryLevel.level2)
+                }
+                .pickerStyle(.segmented)
+            } header: {
+                Text("分类统计")
+            }
+            
+            Section {
+                ForEach(Array(groupByCategory().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
+                    if let categories = groupByCategory()[currency] {
+                        CategoryPieChart(currency: currency, categories: categories)
+                    }
+                }
+            }
+        }
+    }
+    
+    private var timeTrendSection: some View {
+        Section("时间趋势") {
+            ForEach(Array(groupByDate().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
+                if let dailyData = groupByDate()[currency] {
+                    TimeTrendChart(currency: currency, dailyData: dailyData)
+                }
+            }
+        }
+    }
+    
+    private var projectStatsSection: some View {
+        Section("项目统计") {
+            ForEach(Array(groupByProject().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
+                if let projects = groupByProject()[currency] {
+                    ProjectBarChart(currency: currency, projects: projects, modelContext: modelContext)
+                }
+            }
+        }
+    }
+    
+    private var datePickerSheet: some View {
+        NavigationStack {
+            Form {
+                DatePicker("开始日期", selection: $startDate, displayedComponents: .date)
+                DatePicker("结束日期", selection: $endDate, displayedComponents: .date)
+            }
+            .navigationTitle("选择时间范围")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("确定") {
+                        showDatePicker = false
+                        loadTransactions()
+                    }
+                }
+            }
         }
     }
     
@@ -242,7 +154,6 @@ struct ReportView: View {
         do {
             var results = try repo.fetch(from: startDate, to: endDate)
             
-            // 如果选择了币种,过滤
             if let currency = selectedCurrency {
                 results = results.filter { $0.currency == currency }
             }
@@ -263,7 +174,6 @@ struct ReportView: View {
             
             switch categoryLevel {
             case .level1:
-                // 按一级分类统计
                 let grouped = Dictionary(grouping: currencyTransactions) { $0.categoryL1 }
                 stats = grouped.map { (category, txs) -> (String, Decimal) in
                     let total = txs.reduce(Decimal(0)) { $0 + $1.amount }
@@ -271,7 +181,6 @@ struct ReportView: View {
                 }.sorted { $0.1 > $1.1 }
                 
             case .level2:
-                // 按二级分类统计
                 let grouped = Dictionary(grouping: currencyTransactions) { $0.categoryL2 }
                 stats = grouped.map { (category, txs) -> (String, Decimal) in
                     let total = txs.reduce(Decimal(0)) { $0 + $1.amount }
@@ -349,6 +258,158 @@ struct ReportView: View {
         }
         
         return result
+    }
+}
+
+// MARK: - Chart Components
+
+struct IncomeExpenseChart: View {
+    let currency: Currency
+    let stats: (income: Decimal, expense: Decimal)
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(currency.rawValue)
+                .font(.headline)
+            
+            Chart {
+                BarMark(
+                    x: .value("类型", "收入"),
+                    y: .value("金额", NSDecimalNumber(decimal: stats.income).doubleValue)
+                )
+                .foregroundStyle(Color.accentGreen)
+                .cornerRadius(8)
+                
+                BarMark(
+                    x: .value("类型", "支出"),
+                    y: .value("金额", NSDecimalNumber(decimal: stats.expense).doubleValue)
+                )
+                .foregroundStyle(Color.accentRed)
+                .cornerRadius(8)
+            }
+            .frame(height: 200)
+            
+            HStack {
+                VStack(alignment: .leading) {
+                    Text("收入")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("\(currency.symbol)\(stats.income.formatted())")
+                        .font(.smallAmount)
+                        .foregroundColor(.accentGreen)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("支出")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("\(currency.symbol)\(stats.expense.formatted())")
+                        .font(.smallAmount)
+                        .foregroundColor(.accentRed)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+struct CategoryPieChart: View {
+    let currency: Currency
+    let categories: [(String, Decimal)]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(currency.rawValue)
+                .font(.headline)
+            
+            Chart(categories, id: \.0) { category, amount in
+                SectorMark(
+                    angle: .value("金额", NSDecimalNumber(decimal: amount).doubleValue),
+                    innerRadius: .ratio(0.5),
+                    angularInset: 1.5
+                )
+                .foregroundStyle(by: .value("分类", category))
+            }
+            .frame(height: 200)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(categories, id: \.0) { category, amount in
+                    HStack {
+                        Text(category)
+                            .font(.caption)
+                        Spacer()
+                        Text("\(currency.symbol)\(amount.formatted())")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+struct TimeTrendChart: View {
+    let currency: Currency
+    let dailyData: [(Date, Decimal)]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(currency.rawValue)
+                .font(.headline)
+            
+            Chart {
+                ForEach(dailyData, id: \.0) { date, amount in
+                    LineMark(
+                        x: .value("日期", date),
+                        y: .value("金额", NSDecimalNumber(decimal: amount).doubleValue)
+                    )
+                    .foregroundStyle(Color.accentBlue)
+                    .lineStyle(StrokeStyle(lineWidth: 2))
+                    .interpolationMethod(.catmullRom)
+                }
+            }
+            .frame(height: 200)
+        }
+        .padding(.vertical, 8)
+    }
+}
+
+struct ProjectBarChart: View {
+    let currency: Currency
+    let projects: [(UUID, Decimal)]
+    let modelContext: ModelContext
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(currency.rawValue)
+                .font(.headline)
+            
+            Chart(projects, id: \.0) { projectId, amount in
+                BarMark(
+                    x: .value("项目", projectNameById(projectId)),
+                    y: .value("金额", NSDecimalNumber(decimal: amount).doubleValue)
+                )
+                .foregroundStyle(Color.accentBlue)
+            }
+            .frame(height: 200)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(projects, id: \.0) { projectId, amount in
+                    HStack {
+                        Text(projectNameById(projectId))
+                            .font(.caption)
+                        Spacer()
+                        Text("\(currency.symbol)\(amount.formatted())")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 8)
     }
     
     private func projectNameById(_ id: UUID) -> String {
