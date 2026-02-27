@@ -229,6 +229,15 @@ struct ExportView: View {
     @State private var fileURL: URL?
     @State private var errorMessage: String?
 
+    private func fileSafeDate(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.calendar = Calendar(identifier: .gregorian)
+        df.timeZone = TimeZone.current
+        df.dateFormat = "yyyy-MM-dd"
+        return df.string(from: date)
+    }
+
     var body: some View {
         Form {
             Section("时间范围") {
@@ -274,7 +283,10 @@ struct ExportView: View {
         let projectRepo = ProjectRepository(modelContext: modelContext)
 
         do {
-            let transactions = try repo.fetch(from: startDate, to: endDate)
+            let from = Calendar.current.startOfDay(for: startDate)
+            let to = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate))!
+            let inclusiveEnd = to.addingTimeInterval(-1)
+            let transactions = try repo.fetch(from: from, to: inclusiveEnd)
 
             let projects = try projectRepo.fetchAll()
             let projectDict = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.name) })
@@ -296,7 +308,7 @@ struct ExportView: View {
                 csvText += "\(dateStr),\(type),\(currency),\(amount),\(category1),\(category2),\(projectName),\(note)\n"
             }
 
-            let fileName = "账本导出_\(startDate.formatted(date: .numeric, time: .omitted))_\(endDate.formatted(date: .numeric, time: .omitted)).csv"
+            let fileName = "账本导出_\(fileSafeDate(startDate))_\(fileSafeDate(endDate)).csv"
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
 
             try csvText.write(to: tempURL, atomically: true, encoding: .utf8)
@@ -314,7 +326,10 @@ struct ExportView: View {
         let projectRepo = ProjectRepository(modelContext: modelContext)
 
         do {
-            let transactions = try repo.fetch(from: startDate, to: endDate)
+            let from = Calendar.current.startOfDay(for: startDate)
+            let to = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate))!
+            let inclusiveEnd = to.addingTimeInterval(-1)
+            let transactions = try repo.fetch(from: from, to: inclusiveEnd)
 
             let projects = try projectRepo.fetchAll()
             let projectDict = Dictionary(uniqueKeysWithValues: projects.map { ($0.id, $0.name) })
@@ -339,7 +354,7 @@ struct ExportView: View {
 
             let xml = ExcelXMLBuilder.buildWorkbook(sheetName: "流水", headers: headers, rows: rows)
 
-            let fileName = "账本导出_\(startDate.formatted(date: .numeric, time: .omitted))_\(endDate.formatted(date: .numeric, time: .omitted)).xls"
+            let fileName = "账本导出_\(fileSafeDate(startDate))_\(fileSafeDate(endDate)).xls"
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
 
             try xml.write(to: tempURL, atomically: true, encoding: .utf8)

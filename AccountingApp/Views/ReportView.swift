@@ -152,12 +152,19 @@ struct ReportView: View {
     private func loadTransactions() {
         let repo = TransactionRepository(modelContext: modelContext)
         do {
-            var results = try repo.fetch(from: startDate, to: endDate)
-            
+            // 关键：把选择的日期范围正规化到“当天起止”，否则会出现：
+            // - startDate 带时间(默认现在)导致当天早上的记录被排除
+            // - endDate 若是 .date 选择器拿到的是 00:00，导致当天的记录被排除
+            let from = Calendar.current.startOfDay(for: startDate)
+            let to = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: endDate))!
+            let inclusiveEnd = to.addingTimeInterval(-1)
+
+            var results = try repo.fetch(from: from, to: inclusiveEnd)
+
             if let currency = selectedCurrency {
                 results = results.filter { $0.currency == currency }
             }
-            
+
             transactions = results
         } catch {
             print("加载失败: \(error)")
