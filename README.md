@@ -1,143 +1,78 @@
-# AccountingApp - iOS记账应用
+# AccountingApp
 
-## 项目状态
+一个轻量、极客风的 iOS 记账 App（MVP / iOS 17+ / SwiftUI + SwiftData）。
 
-🎉 **P0 MVP已完成** (2026-02-26)
-- Phase 1-6: 全部完成
-- QA验收: 进行中
+> 重要说明：本项目为**纯 AI 生产**（从需求澄清、架构设计、编码实现、修 Bug、UI 打磨到导出与报表），由 AI 助手在真实设备/模拟器验收反馈驱动下迭代完成。仓库记录了完整的 AI 开发过程与提交历史。
 
-### 已完成
+## 功能概览
 
-#### 数据层
-- ✅ SwiftData模型: Transaction, Project
-- ✅ 分类字典: CategoryDictionary (8个一级分类,对应二级分类)
-- ✅ Repository层: TransactionRepository, ProjectRepository
+### 1) 记账（核心）
+最基础但完整的“新增流水”能力。
 
-#### 业务逻辑层
-- ✅ TransactionListViewModel (流水列表逻辑)
-- ✅ AddTransactionViewModel (记账表单逻辑+验证)
-- ✅ ProjectViewModel (项目管理逻辑)
-- ✅ ReportViewModel (报表统计逻辑,支持分币种)
+必填字段（除备注外）：
+- 分类（收入/支出分别维护）
+- 币种：SGD / RMB / USD
+- 收入 / 支出
+- 时间（精确到天，默认今天）
+- 项目（默认“日常项目”，支持选择其它项目）
+- 备注（可为空）
 
-#### 视图层
-- ✅ ContentView + MainTabView (Tab结构: 流水/报表/更多)
-- ✅ TransactionListView (流水列表,按日分组)
-- ✅ AddTransactionView (记账表单+分类双栏选择)
-- ✅ ReportView (报表展示,分币种统计)
-- ✅ SettingsView (项目管理+导出入口)
+分类体系：
+- **支出**
+  - 一级：娱乐 / 购物 / 日常 / 出行 / 人情 / 金融 / 医疗 / 住房
+  - 二级：
+    - 娱乐：聚会、运动、旅游、看剧
+    - 购物：数码产品、衣物、酒、书、虚拟产品、其他
+    - 日常：吃饭、日用品、水电气网、话费、理发、赌博、其他
+    - 出行：地铁、打车、机票、高铁
+    - 人情：孝敬家长、红包、礼物
+    - 金融：投资、税、罚款、其他
+    - 医疗：看病、药物
+    - 住房：房租、物管费、其他
+- **收入**
+  - 工资收入 / 红包收入 / 奖金收入 / 其他收入
 
-#### 核心功能
-- ✅ 多币种支持 (SGD/RMB/USD)
-- ✅ 分币种统计 (不跨币种合计)
-- ✅ 二级分类选择
-- ✅ 必填字段验证
-- ✅ 金额存储(Int64,避免浮点误差)
-- ✅ 默认项目初始化
+### 2) 流水
+- 按时间倒序展示
+- 按“天”分组
+- 展示每笔流水：分类、金额、币种、类型、备注等
 
-### ✅ P0功能已完成
+### 3) 报表
+- **按收入/支出分大 Tab**（避免内容过载）
+- 支持时间范围筛选
+- 支持币种筛选（或全部）
+- 统计维度（均在“当前币种、当前类型（收入/支出）、当前时间范围”口径下统计）：
+  - 分类统计（一级/二级可切换）
+  - 时间趋势（按天折线）
+  - 项目统计（柱状）
+- 多币种展示规则：**分币种展示，不跨币种合计**
 
-#### Phase 2-3: 完善记账和流水 ✅
-- [x] 项目选择器 (使用默认项目)
-- [x] 流水详情页 (编辑/删除)
-- [x] 流水按日分组
-- [x] ViewModel重构(直接使用State)
+### 4) 导出
+支持导出指定时间段内的流水：
+- **Excel（.xls，Excel 2003 XML Spreadsheet 格式）**：可直接用 Excel / Numbers / WPS 打开
+- CSV（兼容 Excel）
 
-#### Phase 4: 项目管理 ✅
-- [x] 项目删除迁移对话框
-- [x] 项目编辑功能(重命名)
-- [x] 设置默认项目
+导出字段：时间、类型、币种、金额、一级分类、二级分类、项目、备注。
 
-#### Phase 5: 报表增强 ✅
-- [x] 时间范围选择器
-- [x] 币种筛选
-- [x] 维度切换 (分类/项目/时间/收支)
-- [x] SwiftUI Charts集成
-  - [x] 分类饼图
-  - [x] 时间趋势折线图
-  - [x] 收支对比柱状图
-  - [x] 项目统计柱状图
-- [x] **分币种不合计** (核心要求)
-
-#### Phase 6: 导出功能 ✅
-- [x] CSV导出(Excel完全兼容)
-- [x] 时间段选择
-- [x] 系统分享面板
-- [x] 包含项目列
-
-#### Phase 7: 整合测试 (进行中)
-- [x] P0功能开发完成
-- [ ] QA全流程验收
-- [ ] Bug修复
-- [ ] 性能优化
-
-### 已知问题
-
-~~1. **ViewModel初始化**: 当前ViewModel在init时创建临时ModelContext,需要改为通过Environment注入~~ ✅ 已解决(改用State)
-~~2. **项目名称显示**: 流水列表中暂未显示项目名称(需要关联Project查询或使用@Relationship)~~ ⚠️ 待优化
-~~3. **Xcode项目配置**: 需要创建.xcodeproj文件才能在Xcode中打开~~ ✅ 已解决(使用xcodegen)
-
-**待QA验收的场景:**
-1. 多币种报表分币种展示,无合计混淆
-2. 项目删除迁移后历史交易projectId正确
-3. 流水编辑后实时刷新
-4. CSV导出格式正确且包含项目列
-
-### 下一步
-
-**当前阶段: QA验收**
-1. 等待QA完整验收 (<@1476238523869958225>)
-2. 根据验收结果修复Bug
-3. 性能优化
-4. 准备交付
-
-**后续增强(非P0):**
-- 流水中显示项目名称
-- 项目选择器(支持自定义选择)
-- 备注字段(可选)
-- 更多图表样式
-
-## 项目结构
-
-```
-AccountingApp/
-├── Models/
-│   ├── Transaction.swift       # 交易数据模型
-│   ├── Project.swift            # 项目数据模型
-│   └── Category.swift           # 分类字典
-├── ViewModels/
-│   ├── TransactionListViewModel.swift
-│   ├── AddTransactionViewModel.swift
-│   ├── ProjectViewModel.swift
-│   └── ReportViewModel.swift
-├── Views/
-│   ├── ContentView.swift        # 主视图+Tab结构
-│   ├── TransactionListView.swift
-│   ├── AddTransactionView.swift
-│   ├── ReportView.swift
-│   └── SettingsView.swift
-├── Repositories/
-│   ├── TransactionRepository.swift
-│   └── ProjectRepository.swift
-└── AccountingAppApp.swift       # App入口
-```
+## UI/风格
+- 整体风格：轻量、极客、用户友好
+- 记账页采用卡片式布局（减少表单“系统设置感”，同时保持对齐与层级清晰）
+- 金额颜色遵循更克制的 HIG 风格：金额用主文本色，语义用 badge 表达
 
 ## 技术栈
+- Swift / SwiftUI
+- SwiftData（本地存储）
+- Charts（SwiftUI Charts）
+- iOS 17+
 
-- Swift + SwiftUI
-- iOS 17+ (SwiftData)
-- MVVM + Repository架构
-- SwiftUI Charts (待集成)
+## 如何运行
+1. `git clone` 本仓库
+2. Xcode 打开 `AccountingApp.xcodeproj`
+3. 选择模拟器或真机目标，点击 Run
 
-## 构建说明
+## 隐私
+- 数据默认仅保存在本地（SwiftData）
+- 导出文件生成在临时目录，通过系统分享面板导出
 
-**当前状态**: 代码已完成,但需要创建Xcode项目文件才能编译运行。
-
-下一步需要:
-1. 在Xcode中创建新项目
-2. 将现有代码文件添加到项目中
-3. 配置Info.plist等
-4. 运行测试
-
-## PRD参考
-
-详见Discord群聊 #ios记账软件开发群 中小朱1号OA的PRD/TRD文档。
+## License
+MIT（如需调整可再议）
