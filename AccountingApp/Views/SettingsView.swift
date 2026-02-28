@@ -28,10 +28,12 @@ struct SettingsView: View {
 
                 #if DEBUG
                 Section("开发") {
-                    Button {
-                        showConfirmGenerateTestData = true
+                    NavigationLink {
+                        DevToolsView(
+                            onGenerateTestData: { showConfirmGenerateTestData = true }
+                        )
                     } label: {
-                        Label("生成测试数据", systemImage: "wand.and.stars")
+                        Label("开发工具", systemImage: "hammer")
                     }
                 }
                 #endif
@@ -477,6 +479,25 @@ enum ExcelXMLBuilder {
             .replacingOccurrences(of: "'", with: "&apos;")
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
+    }
+}
+
+struct DevToolsView: View {
+    let onGenerateTestData: () -> Void
+
+    var body: some View {
+        List {
+            Section {
+                Button(role: .destructive) {
+                    onGenerateTestData()
+                } label: {
+                    Label("生成测试数据", systemImage: "wand.and.stars")
+                }
+            } footer: {
+                Text("仅用于开发调试。Release版本不会显示该入口。")
+            }
+        }
+        .navigationTitle("开发工具")
     }
 }
 
