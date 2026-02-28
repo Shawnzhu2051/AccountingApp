@@ -3,6 +3,11 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
+    
+    #if DEBUG
+    @State private var showConfirmGenerateTestData = false
+    #endif
+
     @State private var showTestDataAlert = false
     @State private var testDataResult = ""
 
@@ -20,13 +25,16 @@ struct SettingsView: View {
                         Label("导出Excel", systemImage: "square.and.arrow.up")
                     }
                 }
-                
-                Section("测试") {
-                    Button(action: generateTestData) {
+
+                #if DEBUG
+                Section("开发") {
+                    Button {
+                        showConfirmGenerateTestData = true
+                    } label: {
                         Label("生成测试数据", systemImage: "wand.and.stars")
                     }
-                    .foregroundColor(.blue)
                 }
+                #endif
 
                 Section("关于") {
                     HStack {
@@ -38,6 +46,16 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("更多")
+            #if DEBUG
+            .alert("确认生成测试数据？", isPresented: $showConfirmGenerateTestData) {
+                Button("取消", role: .cancel) {}
+                Button("确定") {
+                    generateTestData()
+                }
+            } message: {
+                Text("将向本地数据库插入一批测试流水，仅用于开发调试。")
+            }
+            #endif
             .alert("测试数据", isPresented: $showTestDataAlert) {
                 Button("确定") {}
             } message: {
