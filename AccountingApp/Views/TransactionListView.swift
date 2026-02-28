@@ -17,7 +17,6 @@ struct TransactionListView: View {
         return allTransactions.filter { $0.projectId == projectId }
     }
 
-    /// Group by month key "yyyy-MM", then by day within each month
     private var groupedByMonth: [(String, Date, [Transaction])] {
         let cal = Calendar.current
         let grouped = Dictionary(grouping: filteredTransactions) { t -> String in
@@ -56,32 +55,36 @@ struct TransactionListView: View {
         projects.first(where: { $0.isDefault })?.id ?? projects.first?.id
     }
 
+    /// Determine which months should be expanded by default (recent 1 month)
+    private func recentMonthKeys() -> Set<String> {
+        let cal = Calendar.current
+        let now = Date()
+        let comps = cal.dateComponents([.year, .month], from: now)
+        let currentKey = String(format: "%04d-%02d", comps.year!, comps.month!)
+        return [currentKey]
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Project filter
+                // Project filter - single picker
                 if !projects.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
+                    HStack {
+                        Text("项目")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Picker("项目", selection: $selectedProjectId) {
+                            Text("全部项目").tag(nil as UUID?)
                             ForEach(projects) { project in
-                                Button {
-                                    selectedProjectId = project.id
-                                } label: {
-                                    Text(project.name)
-                                        .font(.subheadline)
-                                        .padding(.horizontal, 14)
-                                        .padding(.vertical, 7)
-                                        .background(selectedProjectId == project.id ? Color.accentBlue : Color(.systemGray5))
-                                        .foregroundColor(selectedProjectId == project.id ? .white : .primary)
-                                        .cornerRadius(18)
-                                }
+                                Text(project.name).tag(Optional(project.id))
                             }
                         }
-                        .padding(.horizontal)
-                        .padding(.vertical, 10)
+                        .pickerStyle(.menu)
+                        Spacer()
                     }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
                     .background(Color(.systemBackground))
-
                     Divider()
                 }
 
@@ -97,12 +100,14 @@ struct TransactionListView: View {
         .onAppear {
             if !initialized {
                 selectedProjectId = defaultProjectId()
-                // Default: expand most recent month
-                if let first = groupedByMonth.first {
-                    expandedMonths.insert(first.0)
-                }
+                expandedMonths = recentMonthKeys()
                 initialized = true
             }
+        }
+        .onChange(of: selectedProjectId) { _, _ in
+            // Re-expand recent month when switching projects
+            if !initialized { return }
+            expandedMonths = recentMonthKeys()
         }
     }
 
@@ -134,15 +139,15 @@ struct TransactionListView: View {
                         let days = dayGroups(for: monthTransactions)
                         ForEach(days, id: \.0) { date, dayTransactions in
                             // Day header
-                            Text(date.formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption)
+                            Text(date.formatted(date: .long, time: .omitted))
+                                .font(.footnote)
                                 .foregroundColor(.secondary)
                                 .listRowBackground(Color(.systemGroupedBackground))
                                 .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 2, trailing: 16))
 
                             ForEach(dayTransactions) { transaction in
                                 NavigationLink(destination: TransactionDetailView(transaction: transaction)) {
-                                    CompactTransactionRow(transaction: transaction)
+                                    TransactionRow(transaction: transaction)
                                 }
                             }
                         }
@@ -159,34 +164,34 @@ struct TransactionListView: View {
                     } label: {
                         HStack {
                             Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                                .font(.caption2)
+                                .font(.caption)
                                 .foregroundColor(.secondary)
                                 .frame(width: 16)
 
                             Text(monthDisplayName(monthDate))
-                                .font(.subheadline.weight(.semibold))
+                                .font(.callout.weight(.semibold))
                                 .foregroundColor(.primary)
 
                             Spacer()
 
-                            VStack(alignment: .trailing, spacing: 1) {
+                            VStack(alignment: .trailing, spacing: 2) {
                                 if summary.expense > 0 {
                                     Text("支 \(summary.expense.formatted())")
-                                        .font(.caption2)
+                                        .font(.caption)
                                         .foregroundColor(.accentRed)
                                 }
                                 if summary.income > 0 {
                                     Text("收 \(summary.income.formatted())")
-                                        .font(.caption2)
+                                        .font(.caption)
                                         .foregroundColor(.accentGreen)
                                 }
                             }
 
                             Text("\(monthTransactions.count)笔")
-                                .font(.caption2)
+                                .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 4)
                     }
                 }
             }
@@ -195,28 +200,29 @@ struct TransactionListView: View {
     }
 }
 
-// MARK: - Compact Transaction Row
+// MARK: - Transaction Row (original style, restored larger size)
 
-struct CompactTransactionRow: View {
+struct TransactionRow: View {
     let transaction: Transaction
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             // Category icon
             Image(systemName: CategoryIcons.icon(for: transaction.categoryL2))
-                .font(.body)
-                .foregroundColor(CategoryIcons.color(for: transaction.categoryL1))
-                .frame(width: 32, height: 32)
-                .background(CategoryIcons.color(for: transaction.categoryL1).opacity(0.12))
-                .cornerRadius(8)
+                .font(.title3)
+                .foregroundColor(categoryColor)
+                .frame(width: 40, height: 40)
+                .background(categoryColor.opacity(0.12))
+                .cornerRadius(10)
 
             // Category + note
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(transaction.categoryL2)
-                    .font(.subheadline.weight(.medium))
+                    .font(.body.weight(.medium))
+
                 if !transaction.note.isEmpty {
                     Text(transaction.note)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -224,13 +230,27 @@ struct CompactTransactionRow: View {
 
             Spacer()
 
-            // Amount
-            Text("\(transaction.type == .expense ? "-" : "+")\(transaction.currency.symbol)\(transaction.amount.formatted())")
-                .font(.subheadline.weight(.medium))
-                .monospacedDigit()
-                .foregroundColor(transaction.type == .expense ? .accentRed : .accentGreen)
+            // Amount + type badge
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("\(transaction.currency.symbol)\(transaction.amount.formatted())")
+                    .font(.body.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundColor(transaction.type == .expense ? .accentRed : .accentGreen)
+
+                Text(transaction.type.rawValue)
+                    .font(.caption2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(transaction.type == .expense ? Color.accentRed.opacity(0.1) : Color.accentGreen.opacity(0.1))
+                    .foregroundColor(transaction.type == .expense ? .accentRed : .accentGreen)
+                    .cornerRadius(4)
+            }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 4)
+    }
+
+    private var categoryColor: Color {
+        CategoryIcons.color(for: transaction.categoryL1)
     }
 }
 

@@ -15,12 +15,23 @@ struct ReportView: View {
     @State private var selectedProjectId: UUID?
     @State private var initialized = false
 
-    /// 报表大Tab：收入/支出
     @State private var reportType: TransactionType = .expense
     @State private var categoryLevel: CategoryLevel = .level1
 
+    // Navigation state for category detail (fixes back-button bug)
+    @State private var selectedCategoryDetail: CategoryDetailInfo?
+
     enum CategoryLevel {
         case level1, level2
+    }
+
+    struct CategoryDetailInfo: Hashable {
+        let categoryName: String
+        let currencyRaw: String
+        let reportTypeRaw: String
+
+        var currency: Currency { Currency(rawValue: currencyRaw)! }
+        var transactionType: TransactionType { TransactionType(rawValue: reportTypeRaw)! }
     }
 
     private func defaultProjectId() -> UUID? {
@@ -47,6 +58,14 @@ struct ReportView: View {
             }
             .sheet(isPresented: $showDatePicker) {
                 datePickerSheet
+            }
+            .navigationDestination(item: $selectedCategoryDetail) { detail in
+                CategoryDetailView(
+                    categoryName: detail.categoryName,
+                    currency: detail.currency,
+                    transactions: filteredTransactionsForDetail(detail),
+                    reportType: detail.transactionType
+                )
             }
         }
         .onAppear {
@@ -141,12 +160,24 @@ struct ReportView: View {
             Section {
                 ForEach(Array(groupByCategory().keys.sorted(by: { $0.rawValue < $1.rawValue })), id: \.self) { currency in
                     if let categories = groupByCategory()[currency] {
-                        TappableCategoryPieChart(
+                        InteractivePieChart(
+                            currency: currency,
+                            categories: categories
+                        )
+
+                        // Category list — plain buttons, no NavigationLink (fixes double ">" bug)
+                        CategoryListSection(
                             currency: currency,
                             categories: categories,
-                            allTransactions: transactions,
                             reportType: reportType,
-                            categoryLevel: categoryLevel
+                            categoryLevel: categoryLevel,
+                            onSelect: { categoryName, cur in
+                                selectedCategoryDetail = CategoryDetailInfo(
+                                    categoryName: categoryName,
+                                    currencyRaw: cur.rawValue,
+                                    reportTypeRaw: reportType.rawValue
+                                )
+                            }
                         )
                     }
                 }
@@ -224,16 +255,26 @@ struct ReportView: View {
         }
         return result
     }
+
+    private func filteredTransactionsForDetail(_ detail: CategoryDetailInfo) -> [Transaction] {
+        transactions.filter { t in
+            t.currency == detail.currency && {
+                switch categoryLevel {
+                case .level1: return t.categoryL1 == detail.categoryName
+                case .level2: return t.categoryL2 == detail.categoryName
+                }
+            }()
+        }
+    }
 }
 
-// MARK: - Tappable Pie Chart with Percentages
+// MARK: - Interactive Pie Chart (long-press to show percentage)
 
-struct TappableCategoryPieChart: View {
+struct InteractivePieChart: View {
     let currency: Currency
     let categories: [(String, Decimal)]
-    let allTransactions: [Transaction]
-    let reportType: TransactionType
-    let categoryLevel: ReportView.CategoryLevel
+
+    @State private var highlightedCategory: String?
 
     private var total: Decimal {
         categories.reduce(Decimal(0)) { $0 + $1.1 }
@@ -245,68 +286,109 @@ struct TappableCategoryPieChart: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(currency.rawValue)
                 .font(.headline)
 
-            Chart(categories, id: \.0) { category, amount in
-                SectorMark(
-                    angle: .value("金额", NSDecimalNumber(decimal: amount).doubleValue),
-                    innerRadius: .ratio(0.5),
-                    angularInset: 1.5
-                )
-                .foregroundStyle(by: .value("分类", category))
-                .annotation(position: .overlay) {
-                    let pct = percentage(for: amount)
-                    if pct >= 5 {
-                        Text(String(format: "%.0f%%", pct))
-                            .font(.caption2.weight(.semibold))
-                            .foregroundColor(.white)
+            ZStack {
+                Chart(categories, id: \.0) { category, amount in
+                    SectorMark(
+                        angle: .value("金额", NSDecimalNumber(decimal: amount).doubleValue),
+                        innerRadius: .ratio(0.5),
+                        angularInset: 1.5
+                    )
+                    .foregroundStyle(by: .value("分类", category))
+                    .opacity(highlightedCategory == nil || highlightedCategory == category ? 1.0 : 0.4)
+                }
+                .frame(height: 220)
+
+                // Center overlay when highlighted
+                if let highlighted = highlightedCategory,
+                   let item = categories.first(where: { $0.0 == highlighted }) {
+                    VStack(spacing: 2) {
+                        Text(highlighted)
+                            .font(.caption.weight(.semibold))
+                        Text(String(format: "%.1f%%", percentage(for: item.1)))
+                            .font(.title3.weight(.bold))
+                        Text("\(currency.symbol)\(item.1.formatted())")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
+                    .transition(.opacity)
                 }
             }
-            .frame(height: 200)
-
-            // Category list with navigation
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(categories, id: \.0) { category, amount in
-                    NavigationLink {
-                        CategoryDetailView(
-                            categoryName: category,
-                            currency: currency,
-                            transactions: filteredTransactions(for: category),
-                            reportType: reportType
-                        )
-                    } label: {
-                        HStack {
-                            Text(category)
-                                .font(.subheadline)
-                            Spacer()
-                            Text(String(format: "%.1f%%", percentage(for: amount)))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text("\(currency.symbol)\(amount.formatted())")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.3)
+                    .onEnded { _ in
+                        // Cycle through categories on long press
+                        if let current = highlightedCategory,
+                           let idx = categories.firstIndex(where: { $0.0 == current }),
+                           idx + 1 < categories.count {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                highlightedCategory = categories[idx + 1].0
+                            }
+                        } else {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                highlightedCategory = categories.first?.0
+                            }
                         }
                     }
+            )
+            .onTapGesture {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    highlightedCategory = nil
                 }
+            }
+
+            if highlightedCategory != nil {
+                Text("点击空白处取消高亮")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
         .padding(.vertical, 8)
     }
+}
 
-    private func filteredTransactions(for category: String) -> [Transaction] {
-        allTransactions.filter { t in
-            t.currency == currency && {
-                switch categoryLevel {
-                case .level1: return t.categoryL1 == category
-                case .level2: return t.categoryL2 == category
+// MARK: - Category List Section (uses plain buttons, not NavigationLink)
+
+struct CategoryListSection: View {
+    let currency: Currency
+    let categories: [(String, Decimal)]
+    let reportType: TransactionType
+    let categoryLevel: ReportView.CategoryLevel
+    let onSelect: (String, Currency) -> Void
+
+    private var total: Decimal {
+        categories.reduce(Decimal(0)) { $0 + $1.1 }
+    }
+
+    private func percentage(for amount: Decimal) -> Double {
+        guard total > 0 else { return 0 }
+        return NSDecimalNumber(decimal: amount / total * 100).doubleValue
+    }
+
+    var body: some View {
+        ForEach(categories, id: \.0) { category, amount in
+            Button {
+                onSelect(category, currency)
+            } label: {
+                HStack {
+                    Text(category)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Text(String(format: "%.1f%%", percentage(for: amount)))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("\(currency.symbol)\(amount.formatted())")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundColor(Color(.tertiaryLabel))
                 }
-            }()
+            }
         }
     }
 }
@@ -352,17 +434,17 @@ struct CategoryDetailView: View {
                         HStack(spacing: 10) {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(transaction.categoryL2)
-                                    .font(.subheadline.weight(.medium))
+                                    .font(.body.weight(.medium))
                                 if !transaction.note.isEmpty {
                                     Text(transaction.note)
-                                        .font(.caption)
+                                        .font(.footnote)
                                         .foregroundColor(.secondary)
                                         .lineLimit(1)
                                 }
                             }
                             Spacer()
                             Text("\(currency.symbol)\(transaction.amount.formatted())")
-                                .font(.subheadline)
+                                .font(.body)
                                 .monospacedDigit()
                                 .foregroundColor(reportType == .expense ? .accentRed : .accentGreen)
                         }
