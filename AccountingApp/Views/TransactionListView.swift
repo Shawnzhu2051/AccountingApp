@@ -185,7 +185,7 @@ struct TransactionListView: View {
 
                                             if index < dayTransactions.count - 1 {
                                                 Divider()
-                                                    .padding(.leading, 68)
+                                                    .padding(.leading, 62)
                                             }
                                         }
                                     }
@@ -282,16 +282,16 @@ struct TransactionRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Icon — bigger + glassy, but still single-tone row
+        HStack(spacing: 14) {
+            // Icon — scaled down (keep proportions)
             ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.26 : 0.13))
-                    .frame(width: 48, height: 48)
-                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.25 : 0.12))
+                    .frame(width: 44, height: 44)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
                 Image(systemName: CategoryIcons.icon(for: transaction.categoryL2))
-                    .font(.system(size: 21, weight: .semibold))
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(categoryColor)
             }
 
@@ -317,8 +317,8 @@ struct TransactionRowView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
     }
 }
 
