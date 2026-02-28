@@ -268,8 +268,7 @@ struct ExportView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
     @State private var endDate = Date()
-    @State private var showShareSheet = false
-    @State private var fileURL: URL?
+    @State private var shareItem: ShareItem?
     @State private var errorMessage: String?
 
     @State private var showImporter = false
@@ -317,10 +316,8 @@ struct ExportView: View {
             }
         }
         .navigationTitle("导出")
-        .sheet(isPresented: $showShareSheet) {
-            if let url = fileURL {
-                ShareSheet(items: [url])
-            }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: [item.url])
         }
         .fileImporter(
             isPresented: $showImporter,
@@ -386,8 +383,7 @@ struct ExportView: View {
 
             try csvText.write(to: tempURL, atomically: true, encoding: .utf8)
 
-            fileURL = tempURL
-            showShareSheet = true
+            shareItem = ShareItem(url: tempURL)
 
         } catch {
             errorMessage = "导出失败: \(error.localizedDescription)"
@@ -432,8 +428,7 @@ struct ExportView: View {
 
             try xml.write(to: tempURL, atomically: true, encoding: .utf8)
 
-            fileURL = tempURL
-            showShareSheet = true
+            shareItem = ShareItem(url: tempURL)
         } catch {
             errorMessage = "导出失败: \(error.localizedDescription)"
         }
@@ -483,6 +478,11 @@ enum ExcelXMLBuilder {
             .replacingOccurrences(of: "\n", with: " ")
             .replacingOccurrences(of: "\r", with: " ")
     }
+}
+
+struct ShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
 }
 
 struct ShareSheet: UIViewControllerRepresentable {
