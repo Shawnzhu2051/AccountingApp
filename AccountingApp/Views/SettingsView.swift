@@ -4,6 +4,8 @@ import SwiftData
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
 
+    // Test data generation moved into DevToolsView (only in DEBUG)
+
     var body: some View {
         NavigationStack {
             List {
@@ -19,11 +21,21 @@ struct SettingsView: View {
                     }
                 }
 
+                #if DEBUG
+                Section("开发") {
+                    NavigationLink {
+                        DevToolsView()
+                    } label: {
+                        Label("开发工具", systemImage: "hammer")
+                    }
+                }
+                #endif
+
                 Section("关于") {
                     HStack {
                         Text("版本")
                         Spacer()
-                        Text("1.0.0")
+                        Text("1.1.0")
                             .foregroundColor(.secondary)
                     }
                 }
@@ -225,8 +237,7 @@ struct ExportView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var startDate = Calendar.current.date(byAdding: .month, value: -1, to: Date())!
     @State private var endDate = Date()
-    @State private var showShareSheet = false
-    @State private var fileURL: URL?
+    @State private var shareItem: ShareItem?
     @State private var errorMessage: String?
 
     @State private var showImporter = false
@@ -274,10 +285,8 @@ struct ExportView: View {
             }
         }
         .navigationTitle("导出")
-        .sheet(isPresented: $showShareSheet) {
-            if let url = fileURL {
-                ShareSheet(items: [url])
-            }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(items: [item.url])
         }
         .fileImporter(
             isPresented: $showImporter,
@@ -343,8 +352,7 @@ struct ExportView: View {
 
             try csvText.write(to: tempURL, atomically: true, encoding: .utf8)
 
-            fileURL = tempURL
-            showShareSheet = true
+            shareItem = ShareItem(url: tempURL)
 
         } catch {
             errorMessage = "导出失败: \(error.localizedDescription)"
@@ -389,8 +397,7 @@ struct ExportView: View {
 
             try xml.write(to: tempURL, atomically: true, encoding: .utf8)
 
-            fileURL = tempURL
-            showShareSheet = true
+            shareItem = ShareItem(url: tempURL)
         } catch {
             errorMessage = "导出失败: \(error.localizedDescription)"
         }
@@ -442,6 +449,58 @@ enum ExcelXMLBuilder {
     }
 }
 
+struct DevToolsView: View {
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var showConfirmGenerateTestData = false
+    @State private var showResultAlert = false
+    @State private var resultMessage = ""
+
+    var body: some View {
+        List {
+            Section {
+                Button {
+                    showConfirmGenerateTestData = true
+                } label: {
+                    Label("生成测试数据", systemImage: "wand.and.stars")
+                }
+            } footer: {
+                Text("仅用于开发调试。Release版本不会显示该入口。")
+            }
+        }
+        .navigationTitle("开发工具")
+        .alert("确认生成测试数据？", isPresented: $showConfirmGenerateTestData) {
+            Button("取消", role: .cancel) {}
+            Button("确定") {
+                generateTestData()
+            }
+        } message: {
+            Text("将向本地数据库插入一批测试流水，仅用于开发调试。")
+        }
+        .alert("测试数据", isPresented: $showResultAlert) {
+            Button("确定") {}
+        } message: {
+            Text(resultMessage)
+        }
+    }
+
+    private func generateTestData() {
+        do {
+            let count = try TestDataSeeder.seed(context: modelContext)
+            resultMessage = "成功生成 \(count) 条测试数据"
+            showResultAlert = true
+        } catch {
+            resultMessage = "生成失败: \(error.localizedDescription)"
+            showResultAlert = true
+        }
+    }
+}
+
+struct ShareItem: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]
 
@@ -450,6 +509,84 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {
+    }
+}
+
+// MARK: - 测试数据生成器
+@MainActor
+struct TestDataSeeder {
+    static func seed(context: ModelContext) throws -> Int {
+        // 获取或创建项目
+        let projectNames = ["日常项目", "旅行项目", "装修项目", "投资项目"]
+        var projects: [Project] = []
+        
+        for name in projectNames {
+            let predicate = #Predicate<Project> { $0.name == name }
+            let descriptor = FetchDescriptor<Project>(predicate: predicate)
+            if let existing = try context.fetch(descriptor).first {
+                projects.append(existing)
+            } else {
+                let project = Project(name: name, isDefault: name == "日常项目")
+                context.insert(project)
+                projects.append(project)
+            }
+        }
+        
+        try context.save()
+        
+        let calendar = Calendar.current
+        let now = Date()
+        var count = 0
+        
+        // 测试数据
+        let testData: [(String, String, String, Double, String, String, Int, TransactionType)] = [
+            ("日常", "吃饭", "SGD", 25.50, "日常项目", "午餐", 0, .expense),
+            ("日常", "吃饭", "SGD", 18.00, "日常项目", "早餐", -1, .expense),
+            ("购物", "数码产品", "SGD", 1299.00, "日常项目", "新手机", -2, .expense),
+            ("娱乐", "聚会", "SGD", 156.80, "日常项目", "朋友聚餐", -3, .expense),
+            ("出行", "地铁", "SGD", 3.50, "日常项目", "通勤", -4, .expense),
+            ("日常", "日用品", "SGD", 45.60, "日常项目", "超市购物", -5, .expense),
+            ("人情", "红包", "RMB", 200.00, "日常项目", "过年红包", -6, .expense),
+            ("医疗", "药物", "SGD", 35.00, "日常项目", "感冒药", -7, .expense),
+            ("住房", "房租", "SGD", 2500.00, "日常项目", "月租", -30, .expense),
+            ("购物", "衣物", "SGD", 89.90, "日常项目", "T恤", -8, .expense),
+            ("娱乐", "旅游", "SGD", 2500.00, "旅行项目", "日本游", -45, .expense),
+            ("出行", "机票", "USD", 800.00, "旅行项目", "国际航班", -50, .expense),
+            ("住房", "物管费", "SGD", 150.00, "装修项目", "管理费", -10, .expense),
+            ("购物", "书", "SGD", 45.00, "日常项目", "技术书籍", -12, .expense),
+            ("金融", "投资", "SGD", 5000.00, "投资项目", "股票买入", -1, .expense),
+            ("收入", "工资收入", "SGD", 5000.00, "日常项目", "月薪", -30, .income),
+            ("收入", "红包收入", "RMB", 88.88, "日常项目", "春节红包", -15, .income),
+            ("收入", "奖金收入", "SGD", 2000.00, "日常项目", "年终奖", -20, .income),
+            ("收入", "工资收入", "USD", 3000.00, "日常项目", "美金工资", -30, .income),
+            ("收入", "其他收入", "SGD", 500.00, "投资项目", "投资收益", -5, .income),
+        ]
+        
+        for data in testData {
+            let date = calendar.date(byAdding: .day, value: data.6, to: now)!
+            let project = projects.first { $0.name == data.4 }!
+            
+            var currency: Currency = .sgd
+            if data.2 == "RMB" { currency = .rmb }
+            if data.2 == "USD" { currency = .usd }
+            
+            let transaction = Transaction(
+                amountMinor: Int64(data.3 * 100),
+                currency: currency,
+                type: data.7,
+                datetime: date,
+                projectId: project.id,
+                categoryL1: data.0,
+                categoryL2: data.1,
+                note: data.5
+            )
+            context.insert(transaction)
+            count += 1
+        }
+        
+        try context.save()
+        NotificationCenter.default.post(name: .transactionsDidChange, object: nil)
+        return count
     }
 }
 
