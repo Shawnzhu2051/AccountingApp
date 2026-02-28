@@ -75,8 +75,8 @@ struct TransactionListView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Unified background
-                Color(.systemGroupedBackground)
+                // Unified background (single tone, dark-mode friendly)
+                Color(.systemBackground)
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
@@ -191,8 +191,14 @@ struct TransactionListView: View {
                                     }
                                     .padding(.horizontal, 16)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(Color(.secondarySystemGroupedBackground))
+                                        // Keep rows + container visually one tone; add subtle glass/material
+                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                            .fill(Color(.systemBackground))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                    .strokeBorder(.separator.opacity(colorScheme == .dark ? 0.35 : 0.25), lineWidth: 0.5)
+                                            )
+                                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                                     )
                                     .padding(.horizontal, 16)
                                 }
@@ -222,7 +228,7 @@ struct TransactionListView: View {
                     .frame(width: 14)
 
                 Text(name)
-                    .font(.headline)
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(.primary)
 
                 Spacer()
@@ -241,7 +247,9 @@ struct TransactionListView: View {
                     }
                 }
                 .lineLimit(1)
-                .fixedSize()
+                .minimumScaleFactor(0.8)
+                .layoutPriority(1)
+                .truncationMode(.tail)
 
                 Text("\(count)")
                     .font(.caption2.weight(.semibold))
@@ -251,8 +259,8 @@ struct TransactionListView: View {
                     .background(Color(.tertiarySystemFill))
                     .clipShape(Capsule())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
             .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(.horizontal, 16)
@@ -270,45 +278,43 @@ struct TransactionRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            // Icon — larger, with glass-like background
+        HStack(spacing: 16) {
+            // Icon — bigger + glassy, but still single-tone row
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.3 : 0.15))
-                    .frame(width: 46, height: 46)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.28 : 0.14))
+                    .frame(width: 54, height: 54)
+                    .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 Image(systemName: CategoryIcons.icon(for: transaction.categoryL2))
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.system(size: 24, weight: .semibold))
                     .foregroundStyle(categoryColor)
             }
 
-            // Text content
-            VStack(alignment: .leading, spacing: 4) {
+            // Text content (bigger)
+            VStack(alignment: .leading, spacing: 6) {
                 Text(transaction.categoryL2)
-                    .font(.body.weight(.medium))
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(.primary)
+                    .lineLimit(1)
 
-                if !transaction.note.isEmpty {
-                    Text(transaction.note)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                } else {
-                    Text(transaction.categoryL1)
-                        .font(.subheadline)
-                        .foregroundStyle(.tertiary)
-                }
+                Text(transaction.note.isEmpty ? transaction.categoryL1 : transaction.note)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
-            Spacer()
+            Spacer(minLength: 10)
 
-            // Amount
+            // Amount (bigger, monospaced)
             Text("\(transaction.type == .expense ? "-" : "+")\(transaction.currency.symbol)\(transaction.amount.formatted())")
-                .font(.body.weight(.semibold).monospacedDigit())
+                .font(.title3.weight(.semibold).monospacedDigit())
                 .foregroundStyle(transaction.type == .expense ? .red : .green)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 14)
     }
 }
 
