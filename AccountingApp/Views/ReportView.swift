@@ -268,12 +268,13 @@ struct ReportView: View {
     }
 }
 
-// MARK: - Interactive Pie Chart (long-press to show percentage)
+// MARK: - Interactive Pie Chart (tap sector to show percentage)
 
 struct InteractivePieChart: View {
     let currency: Currency
     let categories: [(String, Decimal)]
 
+    @State private var selectedAngle: Double?
     @State private var highlightedCategory: String?
 
     private var total: Decimal {
@@ -283,6 +284,20 @@ struct InteractivePieChart: View {
     private func percentage(for amount: Decimal) -> Double {
         guard total > 0 else { return 0 }
         return NSDecimalNumber(decimal: amount / total * 100).doubleValue
+    }
+
+    /// Find which category the selected angle falls into
+    private func categoryForAngle(_ angle: Double) -> String? {
+        var cumulative: Double = 0
+        let totalDouble = NSDecimalNumber(decimal: total).doubleValue
+        guard totalDouble > 0 else { return nil }
+        for (category, amount) in categories {
+            cumulative += NSDecimalNumber(decimal: amount).doubleValue / totalDouble
+            if angle <= cumulative {
+                return category
+            }
+        }
+        return categories.last?.0
     }
 
     var body: some View {
@@ -298,8 +313,9 @@ struct InteractivePieChart: View {
                         angularInset: 1.5
                     )
                     .foregroundStyle(by: .value("分类", category))
-                    .opacity(highlightedCategory == nil || highlightedCategory == category ? 1.0 : 0.4)
+                    .opacity(highlightedCategory == nil || highlightedCategory == category ? 1.0 : 0.35)
                 }
+                .chartAngleSelection(value: $selectedAngle)
                 .frame(height: 220)
 
                 // Center overlay when highlighted
@@ -317,33 +333,16 @@ struct InteractivePieChart: View {
                     .transition(.opacity)
                 }
             }
-            .simultaneousGesture(
-                LongPressGesture(minimumDuration: 0.3)
-                    .onEnded { _ in
-                        // Cycle through categories on long press
-                        if let current = highlightedCategory,
-                           let idx = categories.firstIndex(where: { $0.0 == current }),
-                           idx + 1 < categories.count {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                highlightedCategory = categories[idx + 1].0
-                            }
-                        } else {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                highlightedCategory = categories.first?.0
-                            }
-                        }
+            .onChange(of: selectedAngle) { _, newAngle in
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    if let angle = newAngle {
+                        let totalDouble = NSDecimalNumber(decimal: total).doubleValue
+                        guard totalDouble > 0 else { return }
+                        highlightedCategory = categoryForAngle(angle / totalDouble)
+                    } else {
+                        highlightedCategory = nil
                     }
-            )
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    highlightedCategory = nil
                 }
-            }
-
-            if highlightedCategory != nil {
-                Text("点击空白处取消高亮")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
             }
         }
         .padding(.vertical, 8)
