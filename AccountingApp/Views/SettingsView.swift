@@ -3,13 +3,8 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    
-    #if DEBUG
-    @State private var showConfirmGenerateTestData = false
-    #endif
 
-    @State private var showTestDataAlert = false
-    @State private var testDataResult = ""
+    // Test data generation moved into DevToolsView (only in DEBUG)
 
     var body: some View {
         NavigationStack {
@@ -29,9 +24,7 @@ struct SettingsView: View {
                 #if DEBUG
                 Section("开发") {
                     NavigationLink {
-                        DevToolsView(
-                            onGenerateTestData: { showConfirmGenerateTestData = true }
-                        )
+                        DevToolsView()
                     } label: {
                         Label("开发工具", systemImage: "hammer")
                     }
@@ -48,32 +41,6 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("更多")
-            #if DEBUG
-            .alert("确认生成测试数据？", isPresented: $showConfirmGenerateTestData) {
-                Button("取消", role: .cancel) {}
-                Button("确定") {
-                    generateTestData()
-                }
-            } message: {
-                Text("将向本地数据库插入一批测试流水，仅用于开发调试。")
-            }
-            #endif
-            .alert("测试数据", isPresented: $showTestDataAlert) {
-                Button("确定") {}
-            } message: {
-                Text(testDataResult)
-            }
-        }
-    }
-    
-    private func generateTestData() {
-        do {
-            let count = try TestDataSeeder.seed(context: modelContext)
-            testDataResult = "成功生成 \(count) 条测试数据"
-            showTestDataAlert = true
-        } catch {
-            testDataResult = "生成失败: \(error.localizedDescription)"
-            showTestDataAlert = true
         }
     }
 }
@@ -483,13 +450,17 @@ enum ExcelXMLBuilder {
 }
 
 struct DevToolsView: View {
-    let onGenerateTestData: () -> Void
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var showConfirmGenerateTestData = false
+    @State private var showResultAlert = false
+    @State private var resultMessage = ""
 
     var body: some View {
         List {
             Section {
-                Button(role: .destructive) {
-                    onGenerateTestData()
+                Button {
+                    showConfirmGenerateTestData = true
                 } label: {
                     Label("生成测试数据", systemImage: "wand.and.stars")
                 }
@@ -498,6 +469,30 @@ struct DevToolsView: View {
             }
         }
         .navigationTitle("开发工具")
+        .alert("确认生成测试数据？", isPresented: $showConfirmGenerateTestData) {
+            Button("取消", role: .cancel) {}
+            Button("确定") {
+                generateTestData()
+            }
+        } message: {
+            Text("将向本地数据库插入一批测试流水，仅用于开发调试。")
+        }
+        .alert("测试数据", isPresented: $showResultAlert) {
+            Button("确定") {}
+        } message: {
+            Text(resultMessage)
+        }
+    }
+
+    private func generateTestData() {
+        do {
+            let count = try TestDataSeeder.seed(context: modelContext)
+            resultMessage = "成功生成 \(count) 条测试数据"
+            showResultAlert = true
+        } catch {
+            resultMessage = "生成失败: \(error.localizedDescription)"
+            showResultAlert = true
+        }
     }
 }
 
