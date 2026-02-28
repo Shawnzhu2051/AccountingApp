@@ -228,7 +228,7 @@ struct TransactionListView: View {
                     .frame(width: 14)
 
                 Text(name)
-                    .font(.title3.weight(.semibold))
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
 
                 Spacer()
@@ -260,8 +260,8 @@ struct TransactionListView: View {
                     .background(Color(.systemFill).opacity(0.55))
                     .clipShape(Capsule())
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             // keep Liquid Glass but prevent default blue accent highlight
             .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
@@ -286,39 +286,39 @@ struct TransactionRowView: View {
             // Icon — bigger + glassy, but still single-tone row
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.28 : 0.14))
-                    .frame(width: 54, height: 54)
+                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.26 : 0.13))
+                    .frame(width: 48, height: 48)
                     .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 Image(systemName: CategoryIcons.icon(for: transaction.categoryL2))
-                    .font(.system(size: 24, weight: .semibold))
+                    .font(.system(size: 21, weight: .semibold))
                     .foregroundStyle(categoryColor)
             }
 
-            // Text content (bigger)
-            VStack(alignment: .leading, spacing: 6) {
+            // Text content (slightly smaller, keep proportions)
+            VStack(alignment: .leading, spacing: 5) {
                 Text(transaction.categoryL2)
-                    .font(.title3.weight(.semibold))
+                    .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
 
                 Text(transaction.note.isEmpty ? transaction.categoryL1 : transaction.note)
-                    .font(.body)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 10)
 
-            // Amount (bigger, monospaced)
+            // Amount (slightly smaller, monospaced)
             Text("\(transaction.type == .expense ? "-" : "+")\(transaction.currency.symbol)\(transaction.amount.formatted())")
-                .font(.title3.weight(.semibold).monospacedDigit())
+                .font(.headline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(transaction.type == .expense ? .red : .green)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
+                .minimumScaleFactor(0.85)
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
