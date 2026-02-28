@@ -254,15 +254,19 @@ struct TransactionListView: View {
                 Text("\(count)")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 3)
-                    .background(Color(.tertiarySystemFill))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    // avoid any accent-tinted feel; keep neutral
+                    .background(Color(.systemFill).opacity(0.55))
                     .clipShape(Capsule())
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 14)
-            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 16))
+            // keep Liquid Glass but prevent default blue accent highlight
+            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
+        .buttonStyle(.plain)
+        .tint(.primary)
         .padding(.horizontal, 16)
     }
 }
