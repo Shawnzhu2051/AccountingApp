@@ -52,20 +52,13 @@ struct TransactionListView: View {
         return (income, expense)
     }
 
-    private func daySummary(_ transactions: [Transaction]) -> (income: Decimal, expense: Decimal) {
-        let income = transactions.filter { $0.type == .income }.reduce(Decimal(0)) { $0 + $1.amount }
-        let expense = transactions.filter { $0.type == .expense }.reduce(Decimal(0)) { $0 + $1.amount }
-        return (income, expense)
-    }
-
     private func defaultProjectId() -> UUID? {
         projects.first(where: { $0.isDefault })?.id ?? projects.first?.id
     }
 
     private func recentMonthKeys() -> Set<String> {
         let cal = Calendar.current
-        let now = Date()
-        let comps = cal.dateComponents([.year, .month], from: now)
+        let comps = cal.dateComponents([.year, .month], from: Date())
         return [String(format: "%04d-%02d", comps.year!, comps.month!)]
     }
 
@@ -81,35 +74,24 @@ struct TransactionListView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Project filter
-                if !projects.isEmpty {
-                    HStack(spacing: 6) {
-                        Image(systemName: "folder.fill")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        Picker("项目", selection: $selectedProjectId) {
-                            Text("全部项目").tag(nil as UUID?)
-                            ForEach(projects) { project in
-                                Text(project.name).tag(Optional(project.id))
-                            }
-                        }
-                        .pickerStyle(.menu)
-                        .tint(.primary)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(.bar)
-                }
+            ZStack {
+                // Unified background
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
 
-                if filteredTransactions.isEmpty {
-                    emptyStateView
-                } else {
-                    transactionList
+                VStack(spacing: 0) {
+                    // Project filter with Liquid Glass
+                    if !projects.isEmpty {
+                        projectFilter
+                    }
+
+                    if filteredTransactions.isEmpty {
+                        emptyStateView
+                    } else {
+                        transactionList
+                    }
                 }
             }
-            .background(Color(.systemGroupedBackground))
             .navigationTitle("流水")
         }
         .onAppear {
@@ -124,6 +106,28 @@ struct TransactionListView: View {
         }
     }
 
+    private var projectFilter: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "folder.fill")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Picker("项目", selection: $selectedProjectId) {
+                Text("全部项目").tag(nil as UUID?)
+                ForEach(projects) { project in
+                    Text(project.name).tag(Optional(project.id))
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(.primary)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .glassEffect(.regular, in: .capsule)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
+
     private var emptyStateView: some View {
         ContentUnavailableView {
             Label("暂无记录", systemImage: "tray.fill")
@@ -133,123 +137,129 @@ struct TransactionListView: View {
     }
 
     private var transactionList: some View {
-        List {
-            ForEach(groupedByMonth, id: \.0) { monthKey, monthDate, monthTransactions in
-                let isExpanded = expandedMonths.contains(monthKey)
-                let summary = monthSummary(monthTransactions)
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(groupedByMonth, id: \.0) { monthKey, monthDate, monthTransactions in
+                    let isExpanded = expandedMonths.contains(monthKey)
+                    let summary = monthSummary(monthTransactions)
 
-                Section {
-                    if isExpanded {
-                        let days = dayGroups(for: monthTransactions)
-                        ForEach(days, id: \.0) { date, dayTransactions in
-                            let daySummaryData = daySummary(dayTransactions)
-
-                            // Day header row
-                            HStack {
-                                Text(dayDisplayName(date))
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                if daySummaryData.expense > 0 {
-                                    Text("-\(daySummaryData.expense.formatted())")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
+                    VStack(spacing: 0) {
+                        // Month header
+                        monthHeader(
+                            name: monthDisplayName(monthDate),
+                            isExpanded: isExpanded,
+                            summary: summary,
+                            count: monthTransactions.count
+                        ) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                if isExpanded {
+                                    expandedMonths.remove(monthKey)
+                                } else {
+                                    expandedMonths.insert(monthKey)
                                 }
-                            }
-                            .listRowBackground(Color(.systemGroupedBackground))
-                            .listRowInsets(EdgeInsets(top: 10, leading: 16, bottom: 2, trailing: 16))
-                            .listRowSeparator(.hidden)
-
-                            ForEach(dayTransactions) { transaction in
-                                NavigationLink(destination: TransactionDetailView(transaction: transaction)) {
-                                    TransactionRowView(transaction: transaction)
-                                }
-                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                             }
                         }
-                    }
-                } header: {
-                    MonthHeaderView(
-                        monthName: monthDisplayName(monthDate),
-                        isExpanded: isExpanded,
-                        summary: summary,
-                        count: monthTransactions.count
-                    ) {
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            if isExpanded {
-                                expandedMonths.remove(monthKey)
-                            } else {
-                                expandedMonths.insert(monthKey)
+
+                        if isExpanded {
+                            let days = dayGroups(for: monthTransactions)
+                            VStack(spacing: 2) {
+                                ForEach(days, id: \.0) { date, dayTransactions in
+                                    // Day header
+                                    HStack {
+                                        Text(dayDisplayName(date))
+                                            .font(.footnote.weight(.medium))
+                                            .foregroundStyle(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 20)
+                                    .padding(.top, 14)
+                                    .padding(.bottom, 4)
+
+                                    // Transaction rows
+                                    VStack(spacing: 0) {
+                                        ForEach(Array(dayTransactions.enumerated()), id: \.element.id) { index, transaction in
+                                            NavigationLink(destination: TransactionDetailView(transaction: transaction)) {
+                                                TransactionRowView(transaction: transaction)
+                                            }
+                                            .buttonStyle(.plain)
+
+                                            if index < dayTransactions.count - 1 {
+                                                Divider()
+                                                    .padding(.leading, 68)
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, 16)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                            .fill(Color(.secondarySystemGroupedBackground))
+                                    )
+                                    .padding(.horizontal, 16)
+                                }
                             }
+                            .padding(.bottom, 8)
                         }
                     }
                 }
             }
+            .padding(.top, 4)
+            .padding(.bottom, 100) // Space for FAB
         }
-        .listStyle(.insetGrouped)
     }
-}
 
-// MARK: - Month Header
-
-private struct MonthHeaderView: View {
-    let monthName: String
-    let isExpanded: Bool
-    let summary: (income: Decimal, expense: Decimal)
-    let count: Int
-    let action: () -> Void
-
-    var body: some View {
+    private func monthHeader(
+        name: String,
+        isExpanded: Bool,
+        summary: (income: Decimal, expense: Decimal),
+        count: Int,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .font(.caption.weight(.semibold))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.secondary)
                     .frame(width: 14)
 
-                Text(monthName)
-                    .font(.callout.weight(.semibold))
+                Text(name)
+                    .font(.headline)
                     .foregroundStyle(.primary)
 
                 Spacer()
 
-                HStack(spacing: 12) {
+                // Compact summary — single line
+                HStack(spacing: 8) {
                     if summary.expense > 0 {
-                        Label {
-                            Text(summary.expense.formatted())
-                                .font(.caption.weight(.medium))
-                        } icon: {
-                            Image(systemName: "arrow.down.circle.fill")
-                                .font(.caption2)
-                        }
-                        .foregroundStyle(.red)
+                        Text("支\(summary.expense.formatted())")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.red)
                     }
                     if summary.income > 0 {
-                        Label {
-                            Text(summary.income.formatted())
-                                .font(.caption.weight(.medium))
-                        } icon: {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.caption2)
-                        }
-                        .foregroundStyle(.green)
+                        Text("收\(summary.income.formatted())")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.green)
                     }
                 }
+                .lineLimit(1)
+                .fixedSize()
 
                 Text("\(count)")
-                    .font(.caption2.weight(.medium))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(.secondary)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
                     .background(Color(.tertiarySystemFill))
                     .clipShape(Capsule())
             }
-            .padding(.vertical, 4)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 16))
         }
+        .padding(.horizontal, 16)
     }
 }
 
-// MARK: - Transaction Row (iOS native style, dark mode compatible)
+// MARK: - Transaction Row (iOS 26 style)
 
 struct TransactionRowView: View {
     let transaction: Transaction
@@ -260,32 +270,32 @@ struct TransactionRowView: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            // Icon with adaptive background
+        HStack(spacing: 14) {
+            // Icon — larger, with glass-like background
             ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.25 : 0.12))
-                    .frame(width: 42, height: 42)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(categoryColor.opacity(colorScheme == .dark ? 0.3 : 0.15))
+                    .frame(width: 46, height: 46)
 
                 Image(systemName: CategoryIcons.icon(for: transaction.categoryL2))
-                    .font(.system(size: 18, weight: .medium))
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(categoryColor)
             }
 
-            // Category info
-            VStack(alignment: .leading, spacing: 3) {
+            // Text content
+            VStack(alignment: .leading, spacing: 4) {
                 Text(transaction.categoryL2)
-                    .font(.body)
+                    .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
 
                 if !transaction.note.isEmpty {
                     Text(transaction.note)
-                        .font(.footnote)
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 } else {
                     Text(transaction.categoryL1)
-                        .font(.footnote)
+                        .font(.subheadline)
                         .foregroundStyle(.tertiary)
                 }
             }
@@ -293,24 +303,12 @@ struct TransactionRowView: View {
             Spacer()
 
             // Amount
-            VStack(alignment: .trailing, spacing: 3) {
-                Text("\(transaction.type == .expense ? "-" : "+")\(transaction.currency.symbol)\(transaction.amount.formatted())")
-                    .font(.body.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(transaction.type == .expense ? .red : .green)
-
-                Text(transaction.type.rawValue)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(transaction.type == .expense ? .red : .green)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .background(
-                        (transaction.type == .expense ? Color.red : Color.green)
-                            .opacity(colorScheme == .dark ? 0.2 : 0.1)
-                    )
-                    .clipShape(Capsule())
-            }
+            Text("\(transaction.type == .expense ? "-" : "+")\(transaction.currency.symbol)\(transaction.amount.formatted())")
+                .font(.body.weight(.semibold).monospacedDigit())
+                .foregroundStyle(transaction.type == .expense ? .red : .green)
         }
-        .padding(.vertical, 6)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
     }
 }
 
